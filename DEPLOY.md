@@ -1,194 +1,245 @@
-# Heather's Crowned Cleaning — deployment
+# Heather's Crowned Cleaning — deploy runbook
 
-Built 2026-09-11 by WIRE.2 (Workspace Integration & Routing Engineer).
-This is the deployment road, not the site design.
+Written 2026-09-11 by WIRE.2 (Workspace Integration & Routing Engineer),
+from the deploy that actually happened. An earlier version of this file
+described a deploy that had not happened yet; every step below has been
+run and verified, and the things that behaved differently from the plan
+are written down as such.
 
-WHO OWNS WHAT (corrected 2026-09-11, later the same day, per direct
-UserSubmit statement — an earlier version of this line placed deployment
-with UserSubmit and was written before the structure was set):
+**THE SITE IS LIVE ON THIS PIPELINE.** heatherscrownedcleaning.com is
+served by GitHub Pages from this repo as of 2026-09-11.
 
-- WEB.0 owns HCC build AND deployment, through launch. It runs Trial.
-  Document. Adjust. Launch. At launch it hands over and rotates to a
-  different project.
-- WEBHCC.0 comes online at launch and becomes sole owner of HCC web
-  services from that point.
-- DNS and the client relationship stay with UserSubmit.
-- malfunctionlabs.com is NOT in this lane and never will be. That is
-  WEBML's chair, a separate repo and a separate site.
-- WIRE.2 built this repo and owns the pipeline itself, not the site.
+---
 
-## What this repo is
+## Who owns what
 
-One page. `index.html`, 109 KB, from
-`heatherscrownedcleaningv19porkbun.zip` — build v19, supplied by
-UserSubmit 2026-09-11.
+- **WEB.0** owns build AND deploy for HCC, through launch. This runbook
+  is yours. Run it.
+- **WEBHCC.0** comes online at launch and becomes sole owner of HCC web
+  services from that point. WEB.0 rotates to a different project.
+- **DNS, the domain and the client relationship** stay with UserSubmit.
+- **WIRE.2** built this pipeline and owns the pipeline, not the site.
+  Something structurally broken in the road, come to me. Page content and
+  deployment decisions are not mine.
+- malfunctionlabs.com is **not** in this lane and never will be. Separate
+  chair, separate repo, separate site.
 
-This repo starts at v19 deliberately. An earlier local commit held v9,
-the build that is live at the current host, so the diff between live and
-proposed would sit in the history. UserSubmit's call was to start clean
-at v19 while the road is still being laid, and nothing had been pushed,
-so the history was still ours to choose. The v9 zip remains untouched in
-the parent folder if that comparison is ever wanted.
+---
 
-Per v19's own changelog comment, it sits on top of v18 and makes home an
-in-page route so the lockup and back link work in viewers that block
-reloads, adds Home as the first menu and footer item, and closes the
-menu on any selection. Beyond that it carries a six-item nav, social
-links for TikTok, Instagram and X alongside Facebook, a revised owner
-quote, and a licensed-and-insured line.
+## The daily loop — this is the whole job
 
-VERIFIED BY DRIVING IT, not by reading it: served locally, page renders
-with the approved logo, menu opens, selecting Services routes in-page,
-the document title updates, and the menu closes. All three of v19's
-stated changes confirmed working.
+```
+edit index.html
+git add -A
+git commit -m "what changed"
+git push
+```
 
-CORRECTED 2026-09-11, per Mop.1, flagged by WEB.0: the claim below that
-this page is fully self-contained is WRONG. `index.html` line 11 opens
-with `@import url('https://fonts.googleapis.com/css2?...')` pulling
-Archivo and Playfair Display from Google Fonts, which in turn pulls the
-actual font files from fonts.gstatic.com. Two outbound dependencies
-exist beyond the Facebook link: the stylesheet import and the font
-files it loads. If Google Fonts is blocked or slow, Archivo falls back
-to system-ui and the owner's quote loses its Playfair italic — the page
-degrades visibly, it does not fail to load. Both logo images ARE
-correctly inlined as base64 webp (verified), so that part of the
-original claim stands; only the "no external stylesheets" part was
-wrong.
+That is the deploy. There is no build step, no upload, no control panel,
+no zip. The push IS the publish. The site rebuilds itself in well under
+a minute.
 
-Original (incorrect) text, kept for paper trail: "Verified self-
-contained: no external stylesheets, scripts, or image files. The only
-outbound references in the whole document are a Facebook link and a
-`mailto:` address. Both logo images are inlined as base64 webp, which
-means the approved production logo travels inside the file and cannot
-be broken by a missing asset path."
+Credentials are already stored on this machine (Git Credential Manager,
+signed in 2026-09-11). Pushes do not prompt.
 
-Consequence: **there is no build step.** No bundler and no generator.
-What is in this folder is exactly what gets served. It is not dependency
-free, per the correction above, but nothing has to be compiled or
-assembled before serving it.
+---
 
-## Why GitHub Pages
+## Verify after every deploy
 
-- A `git push` is the whole deploy. The site rebuilds on its own, well
-  under a minute.
-- Every change is a commit, so there is a dated history of what the
-  client's site said and when — the same discipline the rest of this org
-  runs on, applied to the thing the client actually sees.
-- A bad deploy is `git revert` plus a push. Rolling back does not mean
-  finding an old zip.
-- Free TLS certificate on the custom domain, issued and renewed by
-  GitHub.
-
-## Limits, stated plainly
-
-Static hosting only. No server-side code and no database. If the page
-ever needs a working contact form, it needs a third-party form endpoint —
-the current page uses a `mailto:` link, which needs nothing.
-
-A private repo requires a paid GitHub plan to publish Pages. A public
-repo publishes free. This page contains no secrets, only public business
-contact details already published on the live site.
-
-| Limit | Value |
-|---|---|
-| Site size | 1 GB |
-| Bandwidth | 100 GB / month |
-| Builds | ~10 / hour |
-
-## Current state of this machine
-
-Checked 2026-09-11, all verified rather than assumed:
-
-- `git` 2.55.0.windows.5 — INSTALLED.
-- GitHub CLI (`gh`) — NOT INSTALLED. Not required; plain git over HTTPS
-  is enough.
-- Global git identity — WAS UNSET. Not changed. This repo carries a
-  repo-local identity instead, so nothing machine-wide was touched:
-  - `user.name` = Malfunction Labs
-  - `user.email` = joshdeanvaldez@gmail.com
-  - Change with `git config user.name` / `user.email` inside this folder.
-- SSH keys — NONE present.
-- Stored git credentials — NONE present.
-- Git Credential Manager 2.9.1 — INSTALLED, and already set as the
-  system credential helper.
-
-**No access token is needed.** That last line is why. Credential Manager
-opens a browser sign-in on the first push and Windows stores the result,
-so no token has to be created, pasted, or handled by anyone. An earlier
-version of this file called for a personal access token; that was
-written before Credential Manager was checked for, and it is not the
-path to use.
-
-**The only real gap between this repo and a live site is that first
-sign-in.** Everything else is done.
-
-## Remaining steps — these need UserSubmit, not a specialist
-
-The GitHub account is `MalfunctionLabs` — a personal account, no
-organizations, verified 2026-09-11.
-
-1. Create the GitHub repo under that account. Public unless the paid
-   plan is already in place. Leave every initialize box unticked: a
-   generated readme or licence will collide with the commits already
-   here.
-2. Run the first push yourself, so the Credential Manager sign-in window
-   appears on your own screen. After it succeeds, credentials are cached
-   and a specialist can push without further authentication.
-3. Point the remote at it and push:
-
-   ```
-   git remote add origin <repo url>
-   git push -u origin main
-   ```
-
-4. In the repo: Settings → Pages → deploy from branch `main`, folder
-   root. The site goes live at the `github.io` address within a minute.
-5. Custom domain, when and only when UserSubmit decides to move off the
-   current host:
-   - Add a file named `CNAME` to this folder containing exactly
-     `heatherscrownedcleaning.com` and nothing else.
-   - At the registrar, point the apex A records at GitHub's four Pages
-     addresses and `www` at the `github.io` hostname.
-   - Tick Enforce HTTPS once the certificate issues.
-
-   **`CNAME` is deliberately absent from this repo.** Adding it before
-   DNS is switched takes the default `github.io` URL out of service, and
-   the live site stays where it is until UserSubmit moves it.
-
-## Cutover note
-
-**PARITY CONFIRMED 2026-09-11.** This repo is byte-for-byte identical to
-what is serving at heatherscrownedcleaning.com right now. Fetched the
-live page and compared: both 109,470 bytes, both MD5
-`ccd1a36f492b8364bac7552d9f944fe0`. Not "looks the same" — the same
-file.
-
-That is why the repo starts at v19 rather than v9, and it changes what
-the cutover is. Pointing DNS at Pages does not change what a visitor
-sees. It changes only where the identical bytes are served from. The
-comparison step is therefore a confirmation, not a judgement call: stand
-Pages up, fetch its `github.io` address, and check the hash still
-matches before touching DNS.
-
-Re-run the check any time with:
+Never assume the push landed. Two commands:
 
 ```
 curl -sL https://heatherscrownedcleaning.com | md5sum
 md5sum index.html
 ```
 
-If those ever stop matching, the repo and the live site have diverged
-and the cutover is no longer invisible. Find out why before switching.
+Matching hashes means the live site is exactly your file.
 
-The site is live at the current host right now and nothing here touches
-that. The move is reversible at every point up until the DNS switch, and
-reversible after it by putting the records back.
+**A mismatch does not always mean failure.** GitHub's edge caches for
+600 seconds. A stale hash within ten minutes of a push is almost
+certainly cache, not a broken deploy. Check the `Age` header before
+concluding anything:
 
-## Updating the site after this is live
+```
+curl -sI https://heatherscrownedcleaning.com | grep -i "^age"
+```
 
-Edit `index.html`, commit, push. That is the entire procedure.
+`Age: 0` is a fresh answer. `Age: 400` is a copy that predates your
+push by that many seconds. This caused a false alarm during cutover —
+see Lessons.
 
-Do not edit the page's design without WEB.0. Do not regenerate or replace
-the inlined logo: `HCC_logo_LIVE_SITE_900.webp` is the only approved
-production logo, per Mesh.0's sealed record, and it is already embedded
-in this file.
+---
+
+## Rolling back
+
+A bad deploy is one command, not a hunt for the last good file.
+
+```
+git revert HEAD
+git push
+```
+
+Live again within a minute, and the history records both the mistake and
+the reversal rather than hiding either.
+
+To see what the site said at any past moment, `git log` and
+`git show <commit>:index.html`.
+
+---
+
+## Current verified state
+
+All checked by fetching, 2026-09-11, not assumed.
+
+| | |
+|---|---|
+| Live at | https://heatherscrownedcleaning.com |
+| Served by | GitHub.com (Pages) |
+| Build | v19, 109,470 bytes |
+| MD5 | `ccd1a36f492b8364bac7552d9f944fe0` |
+| Certificate | Let's Encrypt, CN=heatherscrownedcleaning.com |
+| Valid until | 11 December 2026, renews automatically |
+| HTTP → HTTPS | 301 on both root and www, verified fresh |
+| www | 301 to the root |
+| Repo | github.com/MalfunctionLabs/heatherscrownedcleaning |
+| Branch | `main`, deploy from root |
+
+---
+
+## Files in this repo, and what they are for
+
+- `index.html` — the site. One self-contained page.
+- `CNAME` — contains `heatherscrownedcleaning.com`. **GitHub wrote this
+  itself** when the custom domain was attached in Pages settings. Do not
+  delete it and do not edit it by hand. Removing it detaches the domain
+  and the site falls back to the github.io address.
+- `.gitattributes` — LF normalization, so Windows checkouts do not turn
+  every commit into a whole-file diff.
+- `DEPLOY.md` — this file.
+
+---
+
+## What the page actually depends on
+
+**It is NOT fully self-contained.** An earlier version of this document
+claimed it was, and that claim was wrong — caught by Mop.1, flagged by
+WEB.0.
+
+- Both logo images **are** inlined as base64 webp, including the approved
+  production logo. That part is true and it means the mark cannot break
+  on a missing asset path.
+- `index.html` line 11 carries
+  `@import url('https://fonts.googleapis.com/css2?...')` pulling Archivo
+  and Playfair Display from Google Fonts, which then pulls font files
+  from fonts.gstatic.com.
+- If Google Fonts is blocked or slow the page still loads. Archivo falls
+  back to system-ui and the owner's quote loses its Playfair italic. It
+  degrades visibly; it does not fail.
+
+Worth knowing before anyone promises the page works offline or in a
+locked-down network.
+
+---
+
+## Constraints that bite
+
+**Static hosting only.** No server-side code, no database. Anything
+needing a backend must be a browser-side call to a third-party service.
+Supabase and Web3Forms both fit that shape and work fine here.
+
+**Keys in a public repo are public.** If this repo is public and v30
+embeds a Supabase anon key or a Web3Forms access key, those are readable
+by anyone the moment you push. Both services are designed for that, but
+the Supabase anon key is only safe if row-level security is actually
+configured. Confirm that with UserSubmit before shipping it, not after.
+
+**Browsers block autoplay.** Audio cannot start on page load. It needs a
+control the visitor clicks. Relevant to the looping-audio research
+UserSubmit assigned to Audio.0, which forwards to WEB.0.
+
+**Ship assets as files, not base64.** Inlining audio or large images
+bloats the page for every visitor whether they use it or not. Put them in
+the repo and reference them.
+
+| Pages limit | Value |
+|---|---|
+| Site size | 1 GB |
+| Bandwidth | 100 GB / month |
+| Builds | ~10 / hour |
+
+---
+
+## The DNS, for reference only
+
+Do not change this. It is UserSubmit's, and it is done.
+
+Current, at Porkbun:
+
+| Type | Host | Value |
+|---|---|---|
+| ALIAS | root | malfunctionlabs.github.io |
+| CNAME | www | malfunctionlabs.github.io |
+
+Previous values, kept as the rollback path:
+
+| Type | Host | Was |
+|---|---|---|
+| ALIAS | root | ss1-sixie.porkbun.com |
+
+**Untouched and must stay untouched:** both MX records to fwd1 and
+fwd2.porkbun.com, and the SPF TXT record. Email forwarding for
+services@heatherscrownedcleaning.com depends on them, and that address is
+printed on the site. Breaking DNS here breaks the client's inbox, which
+is worse than breaking the page.
+
+Porkbun static hosting is disabled. Porkbun is registrar and DNS only.
+
+---
+
+## Lessons from this cutover
+
+Written down because they cost real time.
+
+**The parity trick is what made this safe.** The repo was byte-for-byte
+identical to what the old host was serving before any record changed.
+That turned the cutover from a content change into a change of origin.
+Nobody visiting the site saw anything happen. Do the same on any future
+host move: get the repo matching live first, prove it with hashes, then
+switch.
+
+**Cached responses look like failures.** After HTTPS enforcement was
+enabled, the root kept returning 200 instead of 301 for several minutes.
+Nothing was wrong. It was a cached copy with `Age: 507` against a 600
+second window. Check `Age` before diagnosing.
+
+**Verify by driving, not by reading.** v19 was confirmed by opening the
+menu, clicking through to Services, and watching the route change and the
+document title update — not by reading the markup and assuming. The page
+also opens on a black frame that is its own fade-in, which looks like a
+blank-page failure in a screenshot taken too early.
+
+**A partial check is not a verified one.** The self-contained claim above
+was written after checking `src` and `href` attributes and never looking
+for a CSS `@import`. It was wrong and it was stated with confidence.
+Check the thing you are about to claim, not the thing that is easy to
+check.
+
+**The first push needs a human.** Credential Manager must prompt for a
+browser sign-in, and an automated shell has nowhere to show a prompt.
+Every push after the first is unattended. Worth knowing before anyone
+schedules a deploy nobody is awake for.
+
+---
+
+## If something breaks
+
+- **Site shows an old version** — check `Age`. Under ten minutes, wait.
+- **Site 404s** — check `CNAME` still exists in the repo and Pages is
+  still set to deploy from `main` at root.
+- **Certificate warning** — check Enforce HTTPS is still ticked in
+  Settings, Pages. If the domain was recently re-added, the certificate
+  reissues and can take up to an hour.
+- **Push rejected** — someone else pushed. `git pull --no-rebase` then
+  push again.
+- **Something structural in the pipeline itself** — that is WIRE.2's
+  lane, bring it to me rather than working around it.
