@@ -1,4 +1,5 @@
-<!-- HCC admin — v14 — adds "Discount for everything" above the services, and
+<!-- HCC admin — v15 — carries the Spring Fresh Start Clean rename and its
+     repricing to 15% above deep. Otherwise v14, which added "Discount for everything" above the services, and
      each service preview now says which discount it is using and where it came
      from. Otherwise v13, which made discounts a percent plus a reason, per service,
      with a live preview of the badge customers will see. Replaces the
@@ -9,7 +10,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev47.14 — the 12 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.15 — the 12 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -433,11 +434,17 @@
                     perSqFt: 0.30, minutesPerSqFt: 0.07,
                     discount: 0, discountNote: "",
                     description: "Post-renovation cleanup \u2014 clears dust and debris, wipes down all surfaces, cleans windows, fixtures, and vents, and detail-cleans floors." },
-        spring:   { name: "Spring Clean", short: "Seasonal top-to-bottom clean",
-                    rates: { bedroom: 19, bathroom: 27, kitchen: 30, dining: 12, living: 15, other: 10 },
-                    minutes: { bedroom: 40, bathroom: 51, kitchen: 57, dining: 23, living: 34, other: 23 },
+        spring:   { name: "Spring Fresh Start Clean", short: "The deep clean, and then some",
+                    /* v48: repriced 15% ABOVE the deep clean, per UserSubmit. It
+                       used to sit BELOW it as a seasonal rate, so the old
+                       "at the seasonal rate" wording is gone too. Room rates are
+                       deep's rounded to the dollar, which lands at 15.7% on the
+                       model home. Minutes follow the same $30/hr rule as every
+                       other service. */
+                    rates: { bedroom: 37, bathroom: 52, kitchen: 58, dining: 23, living: 29, other: 18 },
+                    minutes: { bedroom: 78, bathroom: 99, kitchen: 110, dining: 44, living: 66, other: 44 },
                     discount: 0, discountNote: "",
-                    description: "Our full deep clean at the seasonal rate \u2014 the same top-to-bottom detail as a standard deep clean. Becoming a repeat client offers additional discounts." }
+                    description: "A full deep clean plus the seasonal reset \u2014 everything in the deep clean, and then the places that only get done once a year. Becoming a repeat client offers additional discounts." }
       }
     };
     var PRICE_DEFAULTS = HCC_PRICES;

@@ -1,4 +1,13 @@
-<!-- HCC site — v47 (admin v14) — on top of v46 (admin v13):
+<!-- HCC site — v48 (admin v15) — on top of v47 (admin v14):
+     Spring Clean is now the SPRING FRESH START CLEAN and is priced 15% ABOVE
+     the deep clean, per UserSubmit. It previously sat BELOW deep as a seasonal
+     rate, so the old "at the seasonal rate" description went with it.
+     NOTE FOR WHOEVER CHECKS: the NAME changes on this deploy, because names
+     live only in the code. The RATES, MINUTES and DESCRIPTION do not, because
+     a saved price sheet overrides all three. Until someone loads the built-in
+     prices in admin and saves, the live site will show the new name against
+     the OLD seasonal prices, which reads as a bargain rather than a premium.
+     Previously, v47:
      One discount box for everything, per UserSubmit, with the per-service
      boxes kept. Resolution order: a service's own percent wins; failing that
      the site-wide one applies; they NEVER stack. Two discounts multiplying by
@@ -51,9 +60,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev47.14 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev48.15 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev47.14=site build plus admin build.
+     v1=first live deployment, rev48.15=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -1239,7 +1248,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev47.14</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.15</span>
   </div>
 
   <script src="quote-doc.js"></script>
@@ -1579,11 +1588,17 @@
                     perSqFt: 0.30, minutesPerSqFt: 0.07,
                     discount: 0, discountNote: "",
                     description: "Post-renovation cleanup \u2014 clears dust and debris, wipes down all surfaces, cleans windows, fixtures, and vents, and detail-cleans floors." },
-        spring:   { name: "Spring Clean", short: "Seasonal top-to-bottom clean",
-                    rates: { bedroom: 19, bathroom: 27, kitchen: 30, dining: 12, living: 15, other: 10 },
-                    minutes: { bedroom: 40, bathroom: 51, kitchen: 57, dining: 23, living: 34, other: 23 },
+        spring:   { name: "Spring Fresh Start Clean", short: "The deep clean, and then some",
+                    /* v48: repriced 15% ABOVE the deep clean, per UserSubmit. It
+                       used to sit BELOW it as a seasonal rate, so the old
+                       "at the seasonal rate" wording is gone too. Room rates are
+                       deep's rounded to the dollar, which lands at 15.7% on the
+                       model home. Minutes follow the same $30/hr rule as every
+                       other service. */
+                    rates: { bedroom: 37, bathroom: 52, kitchen: 58, dining: 23, living: 29, other: 18 },
+                    minutes: { bedroom: 78, bathroom: 99, kitchen: 110, dining: 44, living: 66, other: 44 },
                     discount: 0, discountNote: "",
-                    description: "Our full deep clean at the seasonal rate \u2014 the same top-to-bottom detail as a standard deep clean. Becoming a repeat client offers additional discounts." }
+                    description: "A full deep clean plus the seasonal reset \u2014 everything in the deep clean, and then the places that only get done once a year. Becoming a repeat client offers additional discounts." }
       }
     };
 
