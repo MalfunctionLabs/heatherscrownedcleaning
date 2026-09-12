@@ -1,4 +1,13 @@
-<!-- HCC site — v43 (admin v11) — on top of v42 (admin v10):
+<!-- HCC site — v44 (admin v11, unchanged) — on top of v43:
+     Business location now reads Brigham City, Utah in all three places it
+     appears: the meta description, the contact block and the About body.
+     Per UserSubmit — same county as Tremonton, but Brigham City is where the
+     business is structured and is what the Google Business Profile will say.
+     The name, address and phone have to match across the site, the Facebook
+     page and that profile or Google discounts all three. Service area wording
+     is untouched: still Northern Utah and Southern Idaho.
+     FIRST BUILD THAT MOVES ONLY ONE ARTIFACT — admin.html is not touched, so
+     the tag goes 43.11 to 44.11 rather than 44.12. Previously, v43:
      Quotes are saved. Every quote sent from the site is written to Supabase
      before the email goes out, and Heather prints it from a new Quotes tab in
      admin rather than from her inbox. Web3Forms key is in, so "Send quote"
@@ -13,9 +22,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev43.11 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev44.11 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev43.11=site build plus admin build.
+     v1=first live deployment, rev44.11=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -25,7 +34,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#1E1C1B" />
   <title>Heather's Crowned Cleaning — Residential cleaning, Northern Utah &amp; Southern Idaho</title>
-  <meta name="description" content="Heather's Crowned Cleaning, LLC — residential cleaning in Northern Utah and Southern Idaho. Weekly, bi-weekly, monthly, deep, move-in, move-out and construction cleans, priced by the room. Tremonton, Utah. Call or text 801.882.3310." />
+  <meta name="description" content="Heather's Crowned Cleaning, LLC — residential cleaning in Northern Utah and Southern Idaho. Weekly, bi-weekly, monthly, deep, move-in, move-out and construction cleans, priced by the room. Brigham City, Utah. Call or text 801.882.3310." />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Playfair+Display:ital@1&display=swap');
 
@@ -1026,7 +1035,7 @@
     <hr class="rule reveal-el" />
 
     <div class="reach reveal-el">
-      <p>Heather's Crowned Cleaning, LLC &middot; Tremonton, Utah</p>
+      <p>Heather's Crowned Cleaning, LLC &middot; Brigham City, Utah</p>
       <div class="contact-lines">
         <span class="num"><a href="tel:+18018823310">801.882.3310</a></span> &middot; <a href="sms:+18018823310">call or text</a><br />
         <a href="mailto:getcrowned@heatherscrownedcleaning.com">getcrowned@heatherscrownedcleaning.com</a>
@@ -1200,7 +1209,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev43.11</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev44.11</span>
   </div>
 
   <script src="quote-doc.js"></script>
@@ -1876,7 +1885,7 @@
       { id: 'socials',  kick: 'Find me @', title: 'Say hello.', go: 'Follow along',
         body: function () { return '<div class="icons">' + socialGlyphs() + '</div><p>Facebook now. TikTok, Instagram and X soon.</p>'; } },
       { id: 'about',    kick: 'About',    title: 'Meet Heather.', go: 'About me',
-        body: function () { return '<p>Heather\'s Crowned Cleaning, LLC. Tremonton, Utah. Owner-run, licensed and insured since 2026.</p>'; } }
+        body: function () { return '<p>Heather\'s Crowned Cleaning, LLC. Brigham City, Utah. Owner-run, licensed and insured since 2026.</p>'; } }
     ];
     function faceHtml(sec) { return '<p class="kick">' + escHtml(sec.kick) + '</p><h3>' + escHtml(sec.title) + '</h3>' + sec.body() + '<div class="go">' + escHtml(sec.go) + ' \u2192</div>'; }
     function visibleBoxCount() { return (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) ? 1 : 3; }
