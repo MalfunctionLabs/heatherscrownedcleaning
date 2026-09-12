@@ -1,4 +1,7 @@
-<!-- HCC admin — v22 — stamp dropped to 60px at 25% opacity, per UserSubmit:
+<!-- HCC admin — v23 — the sheet footer says "Document by Malfunction Labs"
+     rather than "Site by", the notes box is bigger, and the page heading moved
+     below the sheet so Print and the paper come first. Otherwise v22, where the
+     stamp dropped to 60px at 25% opacity, per UserSubmit:
      too big, too dark. Otherwise v21, where the sheet's watermark became
      MESH.1's document stamp,
      placed per MESH.1's own placement guide. Otherwise v20, the blank quote
@@ -30,7 +33,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.22 — the 22 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.23 — the 23 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -318,7 +321,7 @@
     .paper h4 { margin: 6px 0 3px; font-size: 9px; }
     .paper th, .paper td { padding: 2px 6px; }
     .paper th { font-size: 9px; }
-    .paper .notes { height: 30px; }
+    .paper .notes { height: 46px; }
     .paper .sig { margin-top: 8px; }
     .paper .fine { margin-top: 7px; font-size: 8px; line-height: 1.38; }
     .paper .ph { padding-bottom: 6px; }
@@ -344,6 +347,9 @@
     @media print {
       body { background: #fff; }
       .wrap > *:not(#panel-upload), .topbar, .tabs, #view-gallery, #view-pricing, .sheet-tools, .foot, #zoom { display: none !important; }
+      /* v23: the explanation moved below the sheet; it is screen furniture and
+         must not follow the paper onto a third page */
+      #view-sheet > h1, #view-sheet > .sub { display: none !important; }
       #view-sheet { display: block !important; }
       .paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0; font-size: 11px; }
       .paper .wm img { opacity: .22; }
@@ -448,13 +454,13 @@
       </div>
 
       <div id="view-sheet" hidden>
-        <h1>Blank quote to print.</h1>
-        <p class="sub">The same layout customers send in from the website, with the price and total columns empty so you can quote by hand.</p>
         <div class="sheet-tools">
           <button class="btn" type="button" id="sheet-print" style="margin-top:0;">Print</button>
           <label class="check" for="sheet-card"><input id="sheet-card" type="checkbox" checked /> Add the current rate card as a second page</label>
         </div>
         <div class="paper" id="paper"></div>
+        <h1 style="margin-top:26px">Blank quote to print.</h1>
+        <p class="sub">The same layout customers send in from the website, with the price and total columns empty so you can quote by hand.</p>
       </div>
 
       <div id="view-quotes" hidden>
@@ -510,7 +516,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.22</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.23</span>
     </div>
   </div>
 
@@ -811,13 +817,13 @@
        That is the whole point: a printed quote in a drawer six months from
        now tells you which version of the site it came from. Auto-filling it
        from the live build would destroy exactly that. */
-    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev48.22.3';
+    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev48.23.4';
 
     function sheetFooter(today) {
       return '<div class="sf">' +
         '<div class="row">' +
           '<span>&copy; 2026 Heather\'s Crowned Cleaning, LLC</span>' +
-          '<span>Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</span>' +
+          '<span>Document by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</span>' +
         '</div>' +
         '<div>Heather\'s Crowned Cleaning, LLC. Licensed &amp; Insured since 2026 &middot; heatherscrownedcleaning.com</div>' +
         '<div>Printed ' + esc(today) + '</div>' +
