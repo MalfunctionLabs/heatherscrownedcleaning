@@ -1,4 +1,10 @@
-<!-- HCC site — v42 (admin v10) — on top of v41 (admin v9):
+<!-- HCC site — v43 (admin v11) — on top of v42 (admin v10):
+     Quotes are saved. Every quote sent from the site is written to Supabase
+     before the email goes out, and Heather prints it from a new Quotes tab in
+     admin rather than from her inbox. Web3Forms key is in, so "Send quote"
+     now emails her directly instead of opening the customer's mail app.
+     The printable sheet moved out of this file into quote-doc.js so the site
+     and the admin render it from one definition. Previously, v42 (admin v10):
      Footer version tag is now the staff door: five taps opens admin.html.
      Studio credit links to malfunctionlabs.com. Admin column no longer
      collapses on wide screens. Previously, v41 (admin v9), first build
@@ -7,9 +13,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev42.10 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev43.11 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev42.10=site build plus admin build.
+     v1=first live deployment, rev43.11=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -1194,9 +1200,10 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev42.10</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev43.11</span>
   </div>
 
+  <script src="quote-doc.js"></script>
   <script>
     // Rotating owner phrases: one is picked at random on every view.
     // Drafted from Heather's originals with the website lines removed;
@@ -1247,7 +1254,8 @@
       bucket: "gallery",
       table: "gallery_pairs",
       pricingTable: "pricing",
-      reviewsTable: "reviews"
+      reviewsTable: "reviews",
+      quotesTable: "quotes"
     };
 
     var galleryState = "idle";
@@ -1536,7 +1544,7 @@
 
     // Where "Send quote" goes. web3formsKey: an access key from web3forms.com
     // tied to Heather's inbox. Empty = fall back to the customer's own mail app.
-    var HCC_QUOTE = { web3formsKey: "", to: "getcrowned@heatherscrownedcleaning.com" };
+    var HCC_QUOTE = { web3formsKey: "08050c7b-f4df-4142-ac78-091a4bd1bba0", to: "getcrowned@heatherscrownedcleaning.com" };
 
     var q = { service: "weekly", counts: { bedroom: 3, bathroom: 2, kitchen: 1, dining: 1, living: 1, other: 0 }, sqft: 0, ref: "" };
     function quoteRef() { if (!q.ref) q.ref = 'HCC-' + Date.now().toString(36).toUpperCase().slice(-6); return q.ref; }
@@ -1632,6 +1640,38 @@
       return out.join('\n');
     }
 
+    /* v43: every quote sent from the site is saved before the email goes out,
+       so Heather has a list she can open and print instead of a pile of mail.
+       Saving is best-effort and never blocks the send: if the database is
+       unreachable the customer still reaches her by email, which is the
+       outcome that actually matters. The failure is reported to the console
+       and to the ping email, not to the customer, who cannot act on it. */
+    function saveQuote(data, done) {
+      if (!HCC_SUPABASE.url || !HCC_SUPABASE.anonKey) { done('not configured'); return; }
+      var go = function () {
+        var client = window.supabase.createClient(HCC_SUPABASE.url, HCC_SUPABASE.anonKey);
+        client.from(HCC_SUPABASE.quotesTable).insert({
+          ref: data.ref,
+          customer_name: data.name, customer_email: data.email,
+          customer_phone: data.phone, customer_area: data.area,
+          customer_notes: data.notes,
+          service_name: data.serviceName, service_badge: data.badge,
+          line_items: data.lineItems,
+          total_display: data.totalText,
+          time_estimate: data.timeEstimate,
+          sqft: q.sqft || null,
+          counts: q.counts
+        }).then(function (res) { done(res && res.error ? (res.error.message || 'insert failed') : null); },
+                function (e) { done((e && e.message) || 'insert failed'); });
+      };
+      if (window.supabase) { go(); return; }
+      var sc = document.createElement('script');
+      sc.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
+      sc.onload = go;
+      sc.onerror = function () { done('library blocked'); };
+      document.head.appendChild(sc);
+    }
+
     function quoteStatus(msg, kind) { var el = document.getElementById('q-status'); el.textContent = msg || ''; el.className = 'q-status' + (kind ? ' ' + kind : ''); }
 
     document.getElementById('quote-form').addEventListener('submit', function (e) {
@@ -1642,24 +1682,41 @@
       if (!phone && !email) { quoteStatus('Add a phone number or an email so Heather can reach you.', 'err'); document.getElementById('q-phone').focus(); return; }
       if (!quoteCompute().lines.length) { quoteStatus('Add at least one room or the square feet first.', 'err'); return; }
       if (document.querySelector('.q-hp').value) return;
+
+      var data = quoteDataFromForm();
       var c = quoteCompute();
-      var subject = 'Quote request \u2014 ' + name + ' \u2014 ' + c.service.name + ' \u2014 ' + money(c.total) + ' \u2014 ' + quoteRef();
-      var body = quoteText();
-      if (!HCC_QUOTE.web3formsKey) {
-        window.location.href = 'mailto:' + HCC_QUOTE.to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-        quoteStatus('Your mail app should open with the quote filled in. Hit send there.', 'ok');
-        return;
-      }
-      var btn = document.getElementById('q-send'); btn.disabled = true; quoteStatus('Sending\u2026');
-      fetch('https://api.web3forms.com/submit', {
-        method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ access_key: HCC_QUOTE.web3formsKey, subject: subject, from_name: name, replyto: email || undefined, message: body, botcheck: '' })
-      }).then(function (r) { return r.json(); }).then(function (j) {
-        if (j && j.success) { quoteStatus('Sent. Heather has your quote and will be in touch. You can print a copy with the button beside this.', 'ok'); }
-        else throw new Error((j && j.message) || 'no');
-      }).catch(function () {
-        quoteStatus('That did not go through. Email it instead: ' + HCC_QUOTE.to, 'err');
-      }).then(function () { btn.disabled = false; });
+      var subject = 'Quote request — ' + name + ' — ' + c.service.name + ' — ' + money(c.total) + ' — ' + data.ref;
+      var btn = document.getElementById('q-send');
+      btn.disabled = true; quoteStatus('Sending…');
+
+      /* v43: save first, then send. The email carries the outcome of the save
+         so Heather knows whether the printable copy is waiting for her or
+         whether this email is the only record of it. */
+      saveQuote(data, function (saveErr) {
+        var body = quoteText();
+        body += '\n\n\u2014\n';
+        if (!saveErr) {
+          body += 'Printable copy saved. Open https://heatherscrownedcleaning.com/admin.html#quotes and sign in — this quote is Ref ' + data.ref + ', and the Print button beside it gives you the full sheet.';
+        } else {
+          body += 'NOTE: this quote could NOT be saved to the site (' + saveErr + '), so this email is the only copy. Nothing is lost, but there is no printable version of this one.';
+        }
+
+        if (!HCC_QUOTE.web3formsKey) {
+          btn.disabled = false;
+          window.location.href = 'mailto:' + HCC_QUOTE.to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+          quoteStatus('Your mail app should open with the quote filled in. Hit send there.', 'ok');
+          return;
+        }
+        fetch('https://api.web3forms.com/submit', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ access_key: HCC_QUOTE.web3formsKey, subject: subject, from_name: name, replyto: email || undefined, message: body, botcheck: '' })
+        }).then(function (r) { return r.json(); }).then(function (j) {
+          if (j && j.success) { quoteStatus('Sent. Heather has your quote and will be in touch. You can print a copy with the button beside this.', 'ok'); }
+          else throw new Error((j && j.message) || 'no');
+        }).catch(function () {
+          quoteStatus('That did not go through. Email it instead: ' + HCC_QUOTE.to, 'err');
+        }).then(function () { btn.disabled = false; });
+      });
     });
 
     quoteBuild();
@@ -1667,37 +1724,31 @@
     // v29: printable quote. Template by Ledger.0 (HCC_PRINTABLE_QUOTE_TEMPLATE),
     // embedded so the site stays one file; tokens filled from the same
     // data the email uses. Opens in a new tab with its own Print button.
-    var HCC_QUOTE_TPL = "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\" />\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n<title>Quote \u2014 Heather's Crowned Cleaning<\/title>\n<style>\n  :root {\n    --charcoal: #131110;\n    --ivory: #F8F5EF;\n    --blush: #8B6F68;\n    --taupe: #9C8B76;\n    --muted: #9A958D;\n  }\n  * { box-sizing: border-box; }\n  body {\n    margin: 0;\n    background: var(--charcoal);\n    color: var(--ivory);\n    font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", Arial, sans-serif;\n    -webkit-font-smoothing: antialiased;\n  }\n  .sheet {\n    max-width: 680px;\n    margin: 0 auto;\n    padding: 48px 40px 32px;\n  }\n  .brand {\n    text-align: center;\n    margin-bottom: 28px;\n  }\n  .brand img {\n    width: 84px;\n    height: 84px;\n    display: block;\n    margin: 0 auto 10px;\n  }\n  .brand .name {\n    font-weight: 800;\n    font-size: 20px;\n    letter-spacing: .02em;\n  }\n  .brand .tag {\n    font-size: 11px;\n    letter-spacing: .08em;\n    text-transform: uppercase;\n    color: var(--muted);\n    margin-top: 2px;\n  }\n  h1 {\n    text-align: center;\n    font-size: 22px;\n    margin: 0 0 4px;\n  }\n  .meta {\n    text-align: center;\n    font-size: 12px;\n    color: var(--muted);\n    margin-bottom: 28px;\n  }\n  .block {\n    border: 1px solid rgba(156,139,118,.35);\n    border-radius: 12px;\n    padding: 18px 20px;\n    margin-bottom: 18px;\n    background: rgba(248,245,239,.03);\n  }\n  .block h2 {\n    font-size: 12px;\n    text-transform: uppercase;\n    letter-spacing: .08em;\n    color: var(--taupe);\n    margin: 0 0 12px;\n  }\n  .cust-grid {\n    display: grid;\n    grid-template-columns: 1fr 1fr;\n    gap: 8px 24px;\n    font-size: 14px;\n  }\n  .cust-grid .label {\n    color: var(--muted);\n    font-size: 11px;\n    text-transform: uppercase;\n    letter-spacing: .05em;\n  }\n  .notes {\n    margin-top: 12px;\n    font-size: 13px;\n    color: var(--ivory);\n    white-space: pre-wrap;\n  }\n  table.quote-table {\n    width: 100%;\n    border-collapse: collapse;\n    font-size: 14px;\n  }\n  table.quote-table td {\n    padding: 7px 0;\n    vertical-align: top;\n  }\n  table.quote-table td:last-child {\n    text-align: right;\n    white-space: nowrap;\n  }\n  table.quote-table tr.svc td {\n    font-weight: 700;\n    color: var(--ivory);\n    padding-bottom: 10px;\n  }\n  table.quote-table tr.total td {\n    border-top: 1px solid rgba(156,139,118,.35);\n    padding-top: 14px;\n    font-size: 20px;\n    font-weight: 800;\n  }\n  table.quote-table tr.time td {\n    color: var(--muted);\n    font-size: 12px;\n    padding-top: 4px;\n  }\n  .promo {\n    display: inline-block;\n    margin-top: 10px;\n    padding: 3px 8px;\n    font-size: 11px;\n    font-weight: 700;\n    letter-spacing: .06em;\n    text-transform: uppercase;\n    color: var(--charcoal);\n    background: var(--taupe);\n    border-radius: 4px;\n  }\n  .fine {\n    margin: 14px 0 0;\n    font-size: 11px;\n    line-height: 1.5;\n    color: var(--muted);\n  }\n  .print-btn-wrap {\n    text-align: center;\n    margin: 28px 0 8px;\n  }\n  .print-btn {\n    background: var(--taupe);\n    color: var(--charcoal);\n    border: none;\n    border-radius: 8px;\n    padding: 12px 28px;\n    font-size: 14px;\n    font-weight: 700;\n    cursor: pointer;\n  }\n  .print-btn:hover { opacity: .9; }\n  .watermark {\n    margin-top: 32px;\n    padding-top: 16px;\n    border-top: 1px solid rgba(156,139,118,.25);\n    text-align: center;\n    font-size: 11px;\n    line-height: 1.7;\n    color: var(--muted);\n  }\n  .watermark .line1 { display: flex; justify-content: space-between; }\n  .watermark .line2 { margin-top: 4px; }\n\n  @media print {\n    body { background: #fff; color: #1a1816; }\n    .sheet { max-width: 100%; padding: 0 8px; }\n    .print-btn-wrap { display: none; }\n    .block { border-color: #ccc; background: transparent; }\n    table.quote-table tr.svc td,\n    .brand .name, h1 { color: #1a1816; }\n    .watermark { color: #666; border-top-color: #ccc; }\n    .promo { color: #1a1816; background: #e4dccd; }\n  }\n<\/style>\n<\/head>\n<body>\n  <div class=\"sheet\">\n    <div class=\"brand\">\n      <img src=\"{{LOGO_SRC}}\" alt=\"Heather's Crowned Cleaning\" />\n      <div class=\"name\">Heather's Crowned Cleaning<\/div>\n      <div class=\"tag\">Clean Spaces \u00b7 Brighter Days<\/div>\n    <\/div>\n\n    <h1>Quote Request<\/h1>\n    <div class=\"meta\">{{QUOTE_DATE}}<!-- if {{QUOTE_REF}} is non-empty, WEB.0 may append \" \u00b7 Ref {{QUOTE_REF}}\" here --><\/div>\n\n    <div class=\"block\">\n      <h2>Customer<\/h2>\n      <div class=\"cust-grid\">\n        <div><div class=\"label\">Name<\/div>{{CUSTOMER_NAME}}<\/div>\n        <div><div class=\"label\">City / area<\/div>{{CUSTOMER_AREA}}<\/div>\n        <div><div class=\"label\">Phone<\/div>{{CUSTOMER_PHONE}}<\/div>\n        <div><div class=\"label\">Email<\/div>{{CUSTOMER_EMAIL}}<\/div>\n      <\/div>\n      <!-- omit the whole notes line if CUSTOMER_NOTES is empty -->\n      <div class=\"notes\">{{CUSTOMER_NOTES}}<\/div>\n    <\/div>\n\n    <div class=\"block\">\n      <h2>Service<\/h2>\n      <table class=\"quote-table\">\n        <tr class=\"svc\"><td colspan=\"2\">{{SERVICE_NAME}}<\/td><\/tr>\n        <!-- {{LINE_ITEMS_HTML}} \u2014 one <tr><td>label<\/td><td>amount<\/td><\/tr> per room/sq-ft line, same as quoteRender() already emits -->\n        {{LINE_ITEMS_HTML}}\n        <tr class=\"total\"><td>Total<\/td><td>{{TOTAL}}<\/td><\/tr>\n        <!-- omit this row entirely if TIME_ESTIMATE is empty, same rule as the site's own quoteRender() -->\n        <tr class=\"time\"><td>Estimated time on site<\/td><td>{{TIME_ESTIMATE}}<\/td><\/tr>\n      <\/table>\n      <!-- omit if SERVICE_BADGE is empty -->\n      <span class=\"promo\">{{SERVICE_BADGE}}<\/span>\n      <p class=\"fine\">Per visit, before tax. This is an instant estimate from the counts entered on the site; Heather confirms the final price after seeing the home.<\/p>\n    <\/div>\n\n    <div class=\"print-btn-wrap\">\n      <button class=\"print-btn\" onclick=\"window.print()\">Print this quote<\/button>\n    <\/div>\n\n    <!-- WATERMARK \u2014 verbatim from the live site's own footer, pulled 2026-09-11. Do not paraphrase; if the site's footer changes, update this block to match. -->\n    <div class=\"watermark\">\n      <div class=\"line1\">\n        <span>\u00a9 2026 Heather's Crowned Cleaning, LLC<\/span>\n        <span>Site by Malfunction Labs\u2122 \u00b7 TRUST THE MALFUNCTION<\/span>\n      <\/div>\n      <div class=\"line2\">Heather's Crowned Cleaning, LLC. Licensed &amp; Insured since 2026<\/div>\n    <\/div>\n  <\/div>\n<\/body>\n<\/html>\n";
+    /* v43: the printable quote template used to be a 6.7KB string right here.
+       It moved to quote-doc.js so admin.html can print a saved quote from the
+       same definition instead of a second copy. */
     function escHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-    function printableQuoteHtml() {
+    /* v43: reads the form, hands a plain object to the shared renderer.
+       Same output as before; the template and the token filling now live in
+       quote-doc.js, where admin.html can reach them too. */
+    function quoteDataFromForm() {
       var c = quoteCompute();
       var v = function (id) { return document.getElementById(id).value.trim(); };
-      var lines = c.lines.map(function (l) { return '<tr><td>' + escHtml(l.label) + '</td><td>' + escHtml(money(l.amount)) + '</td></tr>'; }).join('\n');
-      var date = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-      var html = HCC_QUOTE_TPL;
-      var notes = v('q-notes'), badge = c.service.promo || '', time = c.minutes > 0 ? duration(c.minutes) : '';
-      if (!notes) html = html.replace(/\s*<div class="notes">{{CUSTOMER_NOTES}}<\/div>/, '');
-      if (!time) html = html.replace(/\s*<tr class="time">[\s\S]*?<\/tr>/, '');
-      if (!badge) html = html.replace(/\s*<span class="promo">{{SERVICE_BADGE}}<\/span>/, '');
-      var map = {
-        '{{QUOTE_DATE}}': escHtml(date) + ' \u00b7 Ref ' + escHtml(quoteRef()),
-        '{{QUOTE_REF}}': escHtml(quoteRef()),
-        '{{CUSTOMER_NAME}}': escHtml(v('q-name')) || '\u2014',
-        '{{CUSTOMER_PHONE}}': escHtml(v('q-phone')) || '\u2014',
-        '{{CUSTOMER_EMAIL}}': escHtml(v('q-email')) || '\u2014',
-        '{{CUSTOMER_AREA}}': escHtml(v('q-area')) || '\u2014',
-        '{{CUSTOMER_NOTES}}': escHtml(notes),
-        '{{SERVICE_NAME}}': escHtml(c.service.name),
-        '{{SERVICE_BADGE}}': escHtml(badge),
-        '{{SERVICE_DESC}}': escHtml(c.service.description || ''),
-        '{{LINE_ITEMS_HTML}}': lines,
-        '{{TOTAL}}': escHtml(money(c.total)),
-        '{{TIME_ESTIMATE}}': escHtml(time),
-        '{{LOGO_SRC}}': document.querySelector('.mark-img').getAttribute('src')
+      return {
+        ref: quoteRef(),
+        dateText: new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
+        name: v('q-name'), phone: v('q-phone'), email: v('q-email'),
+        area: v('q-area'), notes: v('q-notes'),
+        serviceName: c.service.name,
+        serviceDesc: c.service.description || '',
+        badge: c.service.promo || '',
+        lineItems: c.lines.map(function (l) { return { label: l.label, amount: money(l.amount) }; }),
+        totalText: money(c.total),
+        timeEstimate: c.minutes > 0 ? duration(c.minutes) : '',
+        logoSrc: document.querySelector('.mark-img').getAttribute('src')
       };
-      Object.keys(map).forEach(function (k) { html = html.split(k).join(map[k]); });
-      return html;
     }
+    function printableQuoteHtml() { return window.HCCQuoteDoc.render(quoteDataFromForm()); }
     function openPrintableQuote() {
       if (!quoteCompute().lines.length) { quoteStatus('Add at least one room or the square feet first.', 'err'); return; }
       var w = window.open('', '_blank');

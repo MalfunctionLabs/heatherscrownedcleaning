@@ -1,5 +1,8 @@
-<!-- HCC admin — v10 — fixes the wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev42.10 — the 10 is this
+<!-- HCC admin — v11 — adds the QUOTES tab: every quote sent from the website,
+     newest first, with Print, a status, and delete. Prints via quote-doc.js,
+     the same definition the public site uses. Otherwise v10, which fixed the
+     wide-screen layout collapse (see .wrap
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev43.11 — the 11 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -72,6 +75,22 @@
     hr.rule { width: 40px; height: 2px; background: var(--taupe); border: 0; margin: 40px 0 22px; }
     h2 { font-size: 18px; font-weight: 700; margin: 0 0 14px; }
     .list { display: grid; gap: 12px; }
+    /* v11: quotes list */
+    .qz { border: 1px solid rgba(156,139,118,.25); border-radius: 10px; background: rgba(248,245,239,.03); padding: 14px 16px; }
+    .qz.is-done { opacity: .55; }
+    .qz-top { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; justify-content: space-between; }
+    .qz-name { font-weight: 700; font-size: 15px; }
+    .qz-total { font-weight: 800; font-size: 16px; white-space: nowrap; }
+    .qz-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .qz-svc { font-size: 13px; margin-top: 8px; }
+    .qz-notes { font-size: 13px; margin-top: 8px; white-space: pre-wrap; color: rgba(248,245,239,.82); }
+    .qz-contact { font-size: 13px; margin-top: 8px; display: grid; gap: 2px; }
+    .qz-contact a { color: var(--taupe); }
+    .qz-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+    .qz-acts .btn { margin-top: 0; padding: 8px 14px; font-size: 13px; }
+    .qz-acts select { background: rgba(19,17,16,.6); color: var(--ivory); border: 1px solid rgba(156,139,118,.5); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13px; }
+    .qz-del { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline; }
+    .qz-del:hover { color: var(--ivory); }
     .item { margin: 0; border: 1px solid rgba(156,139,118,.25); border-radius: 10px; overflow: hidden; background: rgba(248,245,239,.03); }
     .item .pics { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
     .item .pics div { position: relative; aspect-ratio: 1 / 1; }
@@ -219,6 +238,7 @@
         <button type="button" id="tab-pricing" role="tab" aria-selected="false">Pricing</button>
         <button type="button" id="tab-sheet" role="tab" aria-selected="false">Quote sheet</button>
         <button type="button" id="tab-reviews" role="tab" aria-selected="false">Reviews</button>
+        <button type="button" id="tab-quotes" role="tab" aria-selected="false">Quotes</button>
       </div>
 
       <div id="view-gallery">
@@ -289,6 +309,13 @@
         <div class="paper" id="paper"></div>
       </div>
 
+      <div id="view-quotes" hidden>
+        <h1>Quotes.</h1>
+        <p class="sub">Every quote sent from the website, newest first. Print gives you the same sheet the customer saw.</p>
+        <p class="status" id="qz-status">Loading&hellip;</p>
+        <div class="list" id="qz-list"></div>
+      </div>
+
       <div id="view-reviews" hidden>
         <h1>Reviews.</h1>
         <p class="sub">A screenshot of a post and its comments, a few lines of text, or both. It shows on the Reviews page the moment you publish.</p>
@@ -330,6 +357,7 @@
     <p id="zoom-label"></p>
   </div>
 
+  <script src="quote-doc.js"></script>
   <script>
     // Same two values as index.html. Anon key is public by design; the
     // service key must never go here.
@@ -339,7 +367,8 @@
       bucket: "gallery",
       table: "gallery_pairs",
       pricingTable: "pricing",
-      reviewsTable: "reviews"
+      reviewsTable: "reviews",
+      quotesTable: "quotes"
     };
     var MAX_EDGE = 1600;
     var JPEG_Q = 0.85;
@@ -401,8 +430,155 @@
     var pricing = JSON.parse(JSON.stringify(PRICE_DEFAULTS));
     var pricingSaved = null;
 
+    /* v11: QUOTES. Every quote sent from the website lands here, newest
+       first, so Heather has a list she can work through and print from
+       instead of digging through email. The printed sheet comes from
+       quote-doc.js — the same definition the customer's own Print button
+       uses, so the two cannot drift apart.
+
+       Reading a quote means reading a customer's name, phone, email and
+       area. There is no public read policy on this table; it is signed-in
+       only. The website can file a quote and cannot read one back. */
+    var QZ_STATUS = [
+      ['new', 'New'],
+      ['contacted', 'Contacted'],
+      ['scheduled', 'Scheduled'],
+      ['closed', 'Closed']
+    ];
+    var quotesRows = [];
+
+    function qzStatus(msg) { $('qz-status').textContent = msg || ''; }
+
+    function loadQuotes() {
+      if (!client) { qzStatus('Not connected yet.'); return; }
+      qzStatus('Loading…');
+      client.from(HCC_SUPABASE.quotesTable)
+        .select('id,ref,customer_name,customer_email,customer_phone,customer_area,customer_notes,service_name,service_badge,line_items,total_display,time_estimate,status,created_at')
+        .order('created_at', { ascending: false })
+        .limit(300)
+        .then(function (res) {
+          if (res.error) { qzStatus('Quotes could not load: ' + res.error.message); return; }
+          quotesRows = res.data || [];
+          renderQuotes();
+        }, function () { qzStatus('Quotes could not load.'); });
+    }
+
+    function qzWhen(iso) {
+      var d = new Date(iso);
+      if (isNaN(d)) return '';
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
+             ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function renderQuotes() {
+      var wrap = $('qz-list');
+      if (!quotesRows.length) {
+        wrap.innerHTML = '';
+        qzStatus('No quotes yet. They appear here the moment someone sends one from the website.');
+        return;
+      }
+      var open = quotesRows.filter(function (r) { return r.status !== 'closed'; }).length;
+      qzStatus(quotesRows.length + (quotesRows.length === 1 ? ' quote' : ' quotes') + ', ' + open + ' still open.');
+
+      wrap.innerHTML = quotesRows.map(function (r) {
+        var lines = Array.isArray(r.line_items) ? r.line_items : [];
+        var contact = [];
+        if (r.customer_phone) contact.push('<div><a href="tel:' + esc(r.customer_phone) + '">' + esc(r.customer_phone) + '</a></div>');
+        if (r.customer_email) contact.push('<div><a href="mailto:' + esc(r.customer_email) + '">' + esc(r.customer_email) + '</a></div>');
+        if (r.customer_area) contact.push('<div>' + esc(r.customer_area) + '</div>');
+
+        var opts = QZ_STATUS.map(function (o) {
+          return '<option value="' + o[0] + '"' + (r.status === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('');
+
+        return '<div class="qz' + (r.status === 'closed' ? ' is-done' : '') + '" data-id="' + esc(r.id) + '">' +
+          '<div class="qz-top">' +
+            '<span class="qz-name">' + (esc(r.customer_name) || 'No name given') + '</span>' +
+            '<span class="qz-total">' + esc(r.total_display) + '</span>' +
+          '</div>' +
+          '<div class="qz-meta">' + esc(qzWhen(r.created_at)) + ' · Ref ' + esc(r.ref) + '</div>' +
+          '<div class="qz-svc">' + esc(r.service_name) +
+            (r.time_estimate ? ' · about ' + esc(r.time_estimate) + ' on site' : '') +
+            ' · ' + lines.length + (lines.length === 1 ? ' line' : ' lines') +
+          '</div>' +
+          (contact.length ? '<div class="qz-contact">' + contact.join('') + '</div>' : '') +
+          (r.customer_notes ? '<div class="qz-notes">' + esc(r.customer_notes) + '</div>' : '') +
+          '<div class="qz-acts">' +
+            '<button class="btn" type="button" data-act="print">Print</button>' +
+            '<select data-act="status" aria-label="Status">' + opts + '</select>' +
+            '<button class="qz-del" type="button" data-act="delete">Delete</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function qzRowById(id) {
+      for (var i = 0; i < quotesRows.length; i++) if (quotesRows[i].id === id) return quotesRows[i];
+      return null;
+    }
+
+    /* The saved line items print exactly as the customer saw them. Prices are
+       deliberately not recalculated: if Heather changes her rates next week,
+       an old quote must still show what it actually said at the time. */
+    function qzToDoc(r) {
+      return {
+        ref: r.ref,
+        dateText: qzWhen(r.created_at),
+        name: r.customer_name, phone: r.customer_phone,
+        email: r.customer_email, area: r.customer_area,
+        notes: r.customer_notes,
+        serviceName: r.service_name,
+        badge: r.service_badge,
+        lineItems: Array.isArray(r.line_items) ? r.line_items : [],
+        totalText: r.total_display,
+        timeEstimate: r.time_estimate,
+        logoSrc: SHEET_LOGO
+      };
+    }
+
+    $('qz-list').addEventListener('change', function (e) {
+      var sel = e.target.closest('select[data-act="status"]');
+      if (!sel) return;
+      var card = sel.closest('.qz'), id = card.getAttribute('data-id'), row = qzRowById(id);
+      if (!row) return;
+      var was = row.status, now = sel.value;
+      row.status = now;
+      card.classList.toggle('is-done', now === 'closed');
+      client.from(HCC_SUPABASE.quotesTable).update({ status: now }).eq('id', id)
+        .then(function (res) {
+          if (res.error) {
+            row.status = was; sel.value = was;
+            card.classList.toggle('is-done', was === 'closed');
+            qzStatus('Could not save that: ' + res.error.message);
+          } else { renderQuotes(); }
+        }, function () { row.status = was; sel.value = was; qzStatus('Could not save that.'); });
+    });
+
+    $('qz-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      var card = btn.closest('.qz'), id = card.getAttribute('data-id'), row = qzRowById(id);
+      if (!row) return;
+
+      if (btn.getAttribute('data-act') === 'print') {
+        if (!window.HCCQuoteDoc) { qzStatus('The quote sheet did not load. Reload the page and try again.'); return; }
+        if (!window.HCCQuoteDoc.open(qzToDoc(row))) qzStatus('Your browser blocked the new tab. Allow pop-ups for this site, then press Print again.');
+        return;
+      }
+
+      if (btn.getAttribute('data-act') === 'delete') {
+        if (!confirm('Delete the quote from ' + (row.customer_name || 'this customer') + '? This cannot be undone.')) return;
+        client.from(HCC_SUPABASE.quotesTable).delete().eq('id', id)
+          .then(function (res) {
+            if (res.error) { qzStatus('Could not delete that: ' + res.error.message); return; }
+            quotesRows = quotesRows.filter(function (x) { return x.id !== id; });
+            renderQuotes();
+          }, function () { qzStatus('Could not delete that.'); });
+      }
+    });
+
     function showTab(which) {
-      ['gallery', 'pricing', 'sheet', 'reviews'].forEach(function (k) {
+      ['gallery', 'pricing', 'sheet', 'reviews', 'quotes'].forEach(function (k) {
         $('view-' + k).hidden = (which !== k);
         $('tab-' + k).classList.toggle('on', which === k);
         $('tab-' + k).setAttribute('aria-selected', which === k);
@@ -410,11 +586,13 @@
       if (which === 'pricing') loadPricing();
       if (which === 'sheet') { if (!pricingSaved && client) { loadPricing(); } renderSheet(); }
       if (which === 'reviews') loadReviewList();
+      if (which === 'quotes') loadQuotes();
     }
     $('tab-reviews').addEventListener('click', function () { showTab('reviews'); });
     $('tab-gallery').addEventListener('click', function () { showTab('gallery'); });
     $('tab-pricing').addEventListener('click', function () { showTab('pricing'); });
     $('tab-sheet').addEventListener('click', function () { showTab('sheet'); });
+    $('tab-quotes').addEventListener('click', function () { showTab('quotes'); });
 
     // ---- printable blank quote --------------------------------------
     var SHEET_LOGO = "data:image/webp;base64,UklGRh4IAABXRUJQVlA4IBIIAABQJQCdASpwAHAAPj0ci0QiIaESSSaoIAPEs4BnNlEI0FDfbjhbevzAecX6K94z3n2tH+IPkh9Qe1ugV/IvvB+p4vdqj/Q5gR7T/SP8z+WHjGei/ch8ep5j7An8z/qPn9f9Xmt+f/+v/lfgH/lv9S/2P50/5DkZf2nPGlN/K/sow442vRhyTXt4Lz7OEi8jRFBqoVXlP7fg4waJhEuLNKkt2bMD3En50/IXrt+xxaoBO/CUU47pl0q2tYLu2G+0N21gvieZCWy8wXXB91x5rNhlA6Ec2V/7k8PQ1Lb6DCMNSyzaYil/HDiBsxQxV+nIzPk9U8tXGgovvHKY2gD6bp9+bZgVmCa+vwM8AsmdfyLqME4cdY9kc57j4mVlYuPCKclkBXzttqesxWuC13FyBZNUqAAAAP7+ZUKJOdhyXcuJrn49XIXtlFCIV9DGeWSZMxw0fvDyU/5qwyDjwZwyqPsxOlr1A0FSljyn+yHTS0UsAEY8oeZA/83nDqEAIRPtsV7rLZ6oqRQ6xF9PxL9SS/7nlQVR5Pe8zQ6KHpHLkHIrDb8He8/aT1bCQBAig2/y1RJkQxKa7Dlfxo0DJeaaVoO39BxJhQoq3Ld4K4gid2Ix/qEOSlhl55bgvwBd0w/fVXvnrAezXTK+luYbasViFfQA9jVXQ/HAJQxECNxVkp04C9C3LYna4aCnG8gjwlZJF00CpGaezDdgfY2euJ8aptlGxkG5L8IDP2PuoVuTUqu2evZsn7MkMyHM64tOG1sZ9I8aNvEnmUpPCkbY2/trJ/L0EJXqFX0bOI5y+pNKIxztqOUilPlHsnH0wCP4m6lvut6S5mcLwcPx9OrcbibXZAUIct6DXeXWQxTm0QK+gw21b+eYmgqDarZ7ZYw7i04dwR8WYbG8aDO/xctVp8uo6HrkNXn/bzU4mgp5x22Yzf8VBvSOOE33Xu+y6X+rdWKxxvq3LJ9hmTGM1vA+g29qLBTAqIrUWCOo9SSB5IvRR2C8Pymgqs3s/eG5dEE6g74rcK2yf50D8JACVdwVQH1OlwFBKOwNp+cbAfUvU2dgPwZWEmmQptGbepWudIe4tHw6t15Fz9jBp8nbXI+9st/8XTTkFgJt3tbm1T250bu7pdqiZvGX68hYqvNPqo2lQkhnJOYoThfmvWnNGcsQeiXYqBqIDX7hf8GfNjipfyF0P895140DY6kRTK+jOHvQ/+RQIpQPGcyo6qJU6zhIqn+rcUp0EroIBEtH4nNhzboTP4DoInu9PzaOsxkaAJB5GjDNu3jxfuzUcU/vH66J/I1upXmTNAz/DtoTfpiISi3sD6y/YqAG7c/ADR7MwClnvDxhxhv5Ra0NgGPMLlCsO9KJZV447dv7WQnUqg/gasBtf3OrwOvM0ukckAZyNuCgFlsE6vkzH8zLT9CMgeVaV5+M5u/3/VIFFW7p3Bot9poRuZH04RpfsZXRfvfcE2rhF6si8fen2aXEXeK5oOC0Hkymp386+5oimzVLwxZaJzOFPeOpnu87uDmms9f8YQVDVc2WXkLcNAV4SIuCubH3vY1KYA0Weh2FeglDpagGx22X5VLWsMh7vD5NBjCWlbYx8Ey+wO3sblJOrzSvcNEijAkAw248aDjjeX28FLXnIqsrm8icHXQVIzrr8OyTiwzp6wiOMhTfbUoh99zLg7aDhrWm87FQyqcVTk3S0uOCd/kKgsx3rSnoY4Wrrnwn3/7drIIeG8awh8yQ1KR8wkLrdQf7l9GOkFagshocPwrtwEKekmfeU7e9TA/5342dC4LWtYLa877AURmj5ga36TSWJ81cU7AC5NVd3MEQUvQWCcMMRDf09yzUep98JyO56+nc8mV61XHRXTuQo34vXuBlUNJs9zeLPvCZ/u/SVFnLjO6QfSB88Nig082K0CcW3+k+GBz/zDC4Uy0VjeLc02QXYjGlEa1GZQkHvqaXMtYJkMbqIZNdMsNl8/8FTCJbYksEoN+h7c0eSRnUu5lq25abwFnB+PeT6GNSuSpMRZ7H2TCK6cG5h3sker7ypC41zul8QjWjjud+YXgg9wvJTzznVkR2Hm0p9P4enuQStldVK1lsbeIw+9dTEpeUpEGNgPAFVfqXQCqs918vBktKAmodHhNgqbUqUpHyMP7hvG5dcohnSM6+1i6Ooy/6QUAkyHZIVItsP/NxL1SdeULS+Qye0jXUSsMRmbCe4oIMLW5HJ4WGVG6KsO4rOkSTeH68yMxhKs/JUoTD5IqXtsSw/Khq42WBwMEdajOEAAQWT00GKBvJ+KG4em2gZ7hYW1U/XJR/8anueK2WodNMmkwZ2hHd85IC7zv3+CoC0Raej2rDiIrjoLHb5I30O7WJt9EgX+eT9/3m5RVr271IQ5R6/H1ojQ7DBk05v25bxtLER/lnGvp8CmQVWft3oPFlr/LpHbp0flNTM8gAG1LGb0qVef9z/nmEX9S+Yi5ALbYkFMTj2dhd/xKdOOhcAi0KtMkM+7ZYtYbBae2Qj6hWpTQcP/mWWH3+TkQg1Ck5RtTcgt7NT3eBKiDJv+khdFiJy1NrVQ0bkl67EwRHiS4IeNyDTn4Ha1GNb+KJnHK5rzGuhkT/w5IxGr7S4Q6zfbqG2lutvL/I/WTSPJirKRoa6QJ8A/GucFY3pQOk3oEULh3Ah4vybtJKSuLIiwMzufhjVvvxCQjI/V6P5BrfdM+WcN63e04rGhB3cy2XSfASTGC4tju/TbjnQiYWrm2b33iw9f7QiJomIYjjuMhAAA==";
@@ -577,7 +755,15 @@
         });
     });
     $('signout').addEventListener('click', function () { client.auth.signOut(); });
-    function enter(session) { $('who').textContent = 'Signed in as ' + (session.user.email || ''); show('panel-upload'); loadList(); }
+    /* v11: the ping email Heather gets links to admin.html#quotes, so land her
+       on the list rather than on the gallery she then has to navigate away
+       from. Any other hash, or none, behaves exactly as before. */
+    function enter(session) {
+      $('who').textContent = 'Signed in as ' + (session.user.email || '');
+      show('panel-upload');
+      if ((location.hash || '').toLowerCase().indexOf('quotes') > -1) { showTab('quotes'); }
+      else { loadList(); }
+    }
 
     // ---- look closer ----------------------------------------------
     var zoom = $('zoom');
