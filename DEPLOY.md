@@ -298,6 +298,22 @@ Nobody visiting the site saw anything happen. Do the same on any future
 host move: get the repo matching live first, prove it with hashes, then
 switch.
 
+**A byte delta equal to the file's line count is line endings, not a
+changed file.** Local files on this machine are CRLF; served files are
+LF. A 1,403-byte difference on a 1,403-line document is exactly one byte
+per line and the content is identical. Found by WEBML.0 on the sibling
+site, where a size comparison had twice been read as content drift and
+nearly sent it hunting for a change that did not exist.
+
+This is why `.gitattributes` normalises to LF in this repo. That line is
+load-bearing, not tidiness: without it, a Windows checkout and the served
+file differ on every line, and the verify step below reports a false
+mismatch on a perfectly healthy deploy.
+
+**Compare hashes, never sizes.** `md5sum` on both sides, as the verify
+section says. A size check cannot distinguish a line-ending difference
+from a real change, and it will eventually tell you the wrong one.
+
 **Cached responses look like failures.** After HTTPS enforcement was
 enabled, the root kept returning 200 instead of 301 for several minutes.
 Nothing was wrong. It was a cached copy with `Age: 507` against a 600
