@@ -1,7 +1,9 @@
-<!-- HCC admin — v9 — first build under WEBHCC.0: Supabase connected (project URL
+<!-- HCC admin — v10 — fixes the wide-screen layout collapse (see .wrap
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev42.10 — the 10 is this
+     file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
-     ML.WD.WEBHCC-v1,rev41.9 — the 9 is this file. Otherwise v8: email updated to getcrowned@; otherwise v7: adds REVIEWS (text and/or screenshot, stars, source; add / edit / show-hide / delete); otherwise v6: spring clean default renamed (no deal badge), otherwise v5: gallery (before / after pairs, show / hide), PRICING (Heather edits the rates the Quote page uses), and QUOTE SHEET: a printable blank quote, laid out like the one customers email in, with the rate and total columns empty so Heather can price by hand, plus the current rate card on a second page. Heather drops or picks a BEFORE photo and an AFTER photo, taps either preview to look closer, writes a description, and Publish puts the pair on the Gallery page. Ships with index.html as admin.html. Needs the same two Supabase values as index.html and the v4 setup SQL. -->
+     Otherwise v8: email updated to getcrowned@; otherwise v7: adds REVIEWS (text and/or screenshot, stars, source; add / edit / show-hide / delete); otherwise v6: spring clean default renamed (no deal badge), otherwise v5: gallery (before / after pairs, show / hide), PRICING (Heather edits the rates the Quote page uses), and QUOTE SHEET: a printable blank quote, laid out like the one customers email in, with the rate and total columns empty so Heather can price by hand, plus the current rate card on a second page. Heather drops or picks a BEFORE photo and an AFTER photo, taps either preview to look closer, writes a description, and Publish puts the pair on the Gallery page. Ships with index.html as admin.html. Needs the same two Supabase values as index.html and the v4 setup SQL. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +21,11 @@
     html, body { margin: 0; min-height: 100%; }
     body { font-family: Archivo, system-ui, sans-serif; background: var(--charcoal); color: var(--ivory); }
     a { color: inherit; }
-    .wrap { max-width: 640px; margin: 0 auto; padding: 28px 6vw 60px; }
+    /* v9: horizontal padding was a flat 6vw inside a 640px box. On a phone
+       that is ~23px and fine; on a 1900px monitor it became 114px a side and
+       ate 228px of a 640px column, leaving 412px of usable width. Capped so
+       the padding stops growing once it has done its job. */
+    .wrap { max-width: 640px; margin: 0 auto; padding: 28px min(6vw, 28px) 60px; }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; text-decoration: none; margin-bottom: 34px; }
     .brand span { color: var(--muted); font-weight: 500; }
     h1 { font-size: clamp(24px, 5vw, 32px); font-weight: 800; letter-spacing: -.02em; margin: 0 0 6px; }

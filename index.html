@@ -1,11 +1,15 @@
-<!-- HCC site — v41 (admin v9) — on top of v40 (admin v8), first build under WEBHCC.0:
+<!-- HCC site — v42 (admin v10) — on top of v41 (admin v9):
+     Footer version tag is now the staff door: five taps opens admin.html.
+     Studio credit links to malfunctionlabs.com. Admin column no longer
+     collapses on wide screens. Previously, v41 (admin v9), first build
+     under WEBHCC.0:
      Supabase connected — project URL and anon public key filled into the
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev41.9 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev42.10 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev41.9=site build plus admin build.
+     v1=first live deployment, rev42.10=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -889,6 +893,7 @@
       letter-spacing: .07em;
       color: rgba(248,245,239,.24);
     }
+    .foot-meta .credit { text-decoration: none; }
     .foot-meta .credit:hover { color: rgba(248,245,239,.4); }
     /* v40: version tag, bottom-right corner, as small as it gets */
     .ver {
@@ -899,7 +904,12 @@
       letter-spacing: .06em;
       line-height: 1;
       color: rgba(248,245,239,.18);
-      user-select: all;
+      /* v41: this tag is the staff door — five taps opens admin. user-select
+         was 'all', which made every tap of the gesture select the string and,
+         on a phone, raise the selection callout. */
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      cursor: default;
     }
     /* v17: legal line, last thing on the page */
     .foot-legal {
@@ -1181,10 +1191,10 @@
     </nav>
     <div class="foot-meta">
       <span>&copy; 2026 Heather's Crowned Cleaning, LLC</span>
-      <span class="credit">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</span>
+      <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev41.9</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev42.10</span>
   </div>
 
   <script>
@@ -2048,6 +2058,24 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'visible' && !currentPage()) playReveal();
     });
+  </script>
+  <script>
+    /* v41: staff door. Five taps on the footer version tag opens the admin
+       sign-in. Deliberately unlabelled and unadvertised — but obscurity is
+       not the protection here. admin.html is publicly served either way and
+       is guarded by the Supabase login, not by how hard it is to find.
+       The run resets after 1.2s of no taps, so stray clicks never accumulate. */
+    (function () {
+      var tag = document.querySelector('.ver');
+      if (!tag) return;
+      var taps = 0, timer = null;
+      tag.addEventListener('click', function () {
+        taps++;
+        clearTimeout(timer);
+        if (taps >= 5) { taps = 0; window.location.href = 'admin.html'; return; }
+        timer = setTimeout(function () { taps = 0; }, 1200);
+      });
+    })();
   </script>
 </body>
 </html>
