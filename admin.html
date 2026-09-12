@@ -1,4 +1,6 @@
-<!-- HCC admin — v17 — room rates accept cents. The boxes were set to whole
+<!-- HCC admin — v18 — footer matched to the public site: same structure,
+     wording, credit link and version tag, with the nav pointing back at the
+     live site. Otherwise v17, where room rates began accepting cents. The boxes were set to whole
      dollars, so typing 23.89 was refused by the browser and the rate had to be
      re-entered. Values are kept to the cent, not rounded. Otherwise v16, the
      DESKTOP PASS on the Pricing tab: services collapse with
@@ -17,7 +19,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.17 — the 17 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.18 — the 18 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -131,7 +133,22 @@
     .zoom img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
     .zoom p { margin: 12px 0 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--taupe); }
     .zoom-close { position: absolute; top: 18px; right: 5vw; width: 40px; height: 40px; background: none; border: 0; color: var(--ivory); font-size: 30px; line-height: 1; }
-    .foot { margin-top: 50px; font-size: 11px; letter-spacing: .04em; color: rgba(248,245,239,.4); }
+    /* v18: footer matched to the public site. Same structure, same wording,
+       same credit link, same version tag. The nav points back at the live site
+       rather than at in-page anchors, because there is nothing here to anchor
+       to and "get me back to the site" is the thing you actually want from an
+       admin footer. Styles are lifted from index.html; if that footer's TEXT
+       changes, change it here and in quote-doc.js's watermark too. */
+    .foot { margin-top: 50px; padding: 18px 0 22px; font-size: 11px; letter-spacing: .04em; color: rgba(248,245,239,.4); }
+    .foot-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin: 0 0 14px; padding: 0 0 14px; border-bottom: 1px solid rgba(156,139,118,.25); }
+    .foot-nav a { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-decoration: none; color: rgba(248,245,239,.7); }
+    .foot-nav a:hover { color: var(--taupe); }
+    .foot-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .foot-meta .credit { font-size: 9px; letter-spacing: .07em; color: rgba(248,245,239,.24); text-decoration: none; }
+    .foot-meta .credit:hover { color: rgba(248,245,239,.4); }
+    .foot-legal { margin: 12px 0 0; text-align: center; font-size: 11px; letter-spacing: .04em; color: rgba(248,245,239,.4); }
+    .foot-legal .nowrap { white-space: nowrap; }
+    .ver { display: block; margin: 6px 0 0; text-align: right; font-size: 7px; letter-spacing: .06em; line-height: 1; color: rgba(248,245,239,.18); user-select: none; }
     .rv { margin: 0; border: 1px solid rgba(156,139,118,.25); border-radius: 10px; overflow: hidden; background: rgba(248,245,239,.03); position: relative; }
     .rv.is-hidden .rv-main { opacity: .45; }
     .rv .rv-main { padding: 12px 12px 10px; }
@@ -399,7 +416,22 @@
       </div>
     </section>
 
-    <p class="foot">Heather's Crowned Cleaning, LLC. &middot; Site by Malfunction Labs&trade;</p>
+    <div class="foot">
+      <nav class="foot-nav" aria-label="Footer">
+        <a href="index.html#home">Home</a>
+        <a href="index.html#quote">Quote</a>
+        <a href="index.html#services">Services</a>
+        <a href="index.html#about">About Me</a>
+        <a href="index.html#gallery">Gallery</a>
+        <a href="index.html#reviews">Reviews &amp; Testimonials</a>
+      </nav>
+      <div class="foot-meta">
+        <span>&copy; 2026 Heather's Crowned Cleaning, LLC</span>
+        <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
+      </div>
+      <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.18</span>
+    </div>
   </div>
 
   <div class="zoom" id="zoom" hidden>
