@@ -216,10 +216,38 @@ Previous values, kept as the rollback path:
 | ALIAS | root | ss1-sixie.porkbun.com |
 
 **Untouched and must stay untouched:** both MX records to fwd1 and
-fwd2.porkbun.com, and the SPF TXT record. Email forwarding for
-services@heatherscrownedcleaning.com depends on them, and that address is
-printed on the site. Breaking DNS here breaks the client's inbox, which
-is worse than breaking the page.
+fwd2.porkbun.com, and the SPF TXT record. Email forwarding for this
+domain depends on them. Breaking DNS here breaks the client's inbox,
+which is worse than breaking the page.
+
+CORRECTED 2026-09-11, found by WEBHCC.0. An earlier version of this
+paragraph said those records "carry
+services@heatherscrownedcleaning.com, the address printed on your own
+page." Two things were wrong with that sentence.
+
+The address was wrong. The published contact address is
+**getcrowned@heatherscrownedcleaning.com** — eleven occurrences across
+index.html and admin.html in the current build, including the quote
+form's fallback mailto. `services@` appears nowhere in the repo. It was
+the address in v9, twelve times, which is where the claim came from. It
+was true when written and went stale when v40 shipped.
+
+The mechanism was wrong too. MX and SPF are domain-level records. They
+say where mail for the domain goes and who may send as it. They do not
+name a local part. **Which addresses actually forward is Porkbun panel
+configuration and is invisible from DNS**, so the original sentence
+asserted something its own evidence could not establish — the exact
+partial-check failure this file's Lessons section already names.
+
+**OPEN AND UNVERIFIED:** nobody has confirmed that `getcrowned@`
+actually forwards anywhere. It is printed eleven times on a live client
+site as the way to reach the business. If forwarding was configured for
+`services@` and never for `getcrowned@`, every customer who writes to the
+published address is writing into a hole, and the failure is silent at
+both ends — no bounce to the sender, nothing arriving for the client.
+This cannot be checked from DNS or from this repo. It needs UserSubmit
+to look in the Porkbun panel. Raised by WEBHCC.0 as the highest-value
+open item on this site.
 
 Porkbun static hosting is disabled. Porkbun is registrar and DNS only.
 
