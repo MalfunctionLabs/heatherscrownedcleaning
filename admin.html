@@ -1,11 +1,13 @@
-<!-- HCC admin — v12 — adds "Load the built-in prices", the only way to pull a
+<!-- HCC admin — v13 — discounts are now a percent plus a reason, per service,
+     with a live preview of the badge customers will see. Replaces the
+     free-text badge box. Otherwise v12, which added "Load the built-in prices", the only way to pull a
      corrected code-side price/time table into a project that already has a
      saved sheet. It fills the form only; nothing is live until Save. Also
      carries the $30/hr time rebuild. Otherwise v11, which added the QUOTES tab: every quote sent from the website,
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev45.12 — the 12 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev46.13 — the 12 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -392,41 +394,41 @@
         weekly:   { name: "Weekly Clean",    short: "Every week",
                     rates: { bedroom: 18, bathroom: 24, kitchen: 27, dining: 12, living: 15, other: 10 },
                     minutes: { bedroom: 35, bathroom: 46, kitchen: 58, dining: 23, living: 35, other: 23 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Routine upkeep visit every week \u2014 kitchens, bathrooms, floors, dusting, and trash, keeping the home consistently tidy." },
         biweekly: { name: "Bi-Weekly Clean", short: "Every other week",
                     rates: { bedroom: 20, bathroom: 26, kitchen: 29, dining: 13, living: 16, other: 11 },
                     minutes: { bedroom: 40, bathroom: 49, kitchen: 62, dining: 24, living: 36, other: 24 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Routine clean every two weeks \u2014 same coverage as the weekly clean, with a bit more buildup to address each visit." },
         monthly:  { name: "Monthly Clean",   short: "Once a month",
                     rates: { bedroom: 22, bathroom: 29, kitchen: 33, dining: 14, living: 18, other: 12 },
                     minutes: { bedroom: 44, bathroom: 56, kitchen: 67, dining: 27, living: 40, other: 27 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Once-a-month refresh \u2014 full standard clean plus extra attention to areas that accumulate buildup between visits." },
         deep:     { name: "Deep Clean",      short: "Top to bottom",
                     rates: { bedroom: 32, bathroom: 45, kitchen: 50, dining: 20, living: 25, other: 16 },
                     minutes: { bedroom: 67, bathroom: 86, kitchen: 95, dining: 38, living: 57, other: 38 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Thorough top-to-bottom clean \u2014 baseboards, inside appliances, behind and under furniture, and detailed scrubbing beyond a routine visit." },
         movein:   { name: "Move-In Clean",   short: "Before you unpack",
                     rates: { bedroom: 32, bathroom: 45, kitchen: 48, dining: 20, living: 24, other: 15 },
                     minutes: { bedroom: 65, bathroom: 86, kitchen: 97, dining: 39, living: 54, other: 39 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Deep clean of an empty home before belongings arrive \u2014 same thorough coverage as a move-out clean, so everything is sanitized and fresh on day one." },
         moveout:  { name: "Move-Out Clean",  short: "Ready for the walkthrough",
                     rates: { bedroom: 34, bathroom: 48, kitchen: 52, dining: 21, living: 27, other: 17 },
                     minutes: { bedroom: 70, bathroom: 91, kitchen: 104, dining: 41, living: 59, other: 41 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Deep clean of an emptied home for landlord inspection or the next tenant \u2014 inside cabinets and appliances, baseboards, closets, and all rooms top to bottom." },
         construction: { name: "Construction Clean", short: "Priced by square foot",
                     perSqFt: 0.30, minutesPerSqFt: 0.07,
-                    promo: "Limited-time price \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Post-renovation cleanup \u2014 clears dust and debris, wipes down all surfaces, cleans windows, fixtures, and vents, and detail-cleans floors." },
         spring:   { name: "Spring Clean", short: "Seasonal top-to-bottom clean",
                     rates: { bedroom: 19, bathroom: 27, kitchen: 30, dining: 12, living: 15, other: 10 },
                     minutes: { bedroom: 40, bathroom: 51, kitchen: 57, dining: 23, living: 34, other: 23 },
-                    promo: "",
+                    discount: 0, discountNote: "",
                     description: "Our full deep clean at the seasonal rate \u2014 the same top-to-bottom detail as a standard deep clean. Becoming a repeat client offers additional discounts." }
       }
     };
@@ -632,7 +634,10 @@
           var s = pricing.services[k]; if (!s) return;
           if (s.perSqFt !== undefined) { h += '<tr><td>' + esc(s.name) + '</td><td colspan="' + pricing.rooms.length + '">' + money(s.perSqFt) + ' per square foot' + (s.minutesPerSqFt ? ' &middot; about ' + s.minutesPerSqFt + ' min / sq ft' : '') + '</td></tr>'; }
           else { h += '<tr><td>' + esc(s.name) + '</td>'; pricing.rooms.forEach(function (r) { h += '<td>' + money(s.rates[r[0]] || 0) + '</td>'; }); h += '</tr>'; }
-          if (s.promo) h += '<tr class="badge"><td colspan="' + (pricing.rooms.length + 1) + '">' + esc(s.promo) + '</td></tr>';
+          /* the printed rate card shows the discount as a line under the
+             service, since the room rates above it are the full prices */
+          var dpc = Number(s.discount) || 0, dwhy = String(s.discountNote || '').trim();
+          if (dpc > 0 && dpc < 100) h += '<tr class="badge"><td colspan="' + (pricing.rooms.length + 1) + '">' + esc(dpc + '% off' + (dwhy ? ' — ' + dwhy : '') + ', taken off the total') + '</td></tr>';
         });
         h += '</table>';
         h += '<h4>Estimated minutes per room</h4><table class="card"><tr><th>Service</th>';
@@ -669,7 +674,16 @@
           pricing.rooms.forEach(function (r) { html += '<div><label>' + esc(r[1]) + '</label><input class="p-field" type="number" min="0" step="1" inputmode="numeric" data-key="' + key + '" data-min="' + r[0] + '" value="' + ((s.minutes && s.minutes[r[0]]) || 0) + '" /></div>'; });
           html += '</div>';
         }
-        html += '<p class="p-sub">Badge shown to customers (blank for none)</p><input class="p-field" type="text" data-key="' + key + '" data-field="promo" value="' + esc(s.promo || '') + '" />';
+        /* v13: a discount is a number and a reason. The badge is built from
+           them, so a badge can no longer exist without a real discount behind
+           it — which is how the site ended up advertising 15% off and charging
+           full price. Leave the percent at 0 for no discount and no badge. */
+        var pct = Number(s.discount) || 0;
+        var why = String(s.discountNote || '');
+        html += '<p class="p-sub">Discount</p><div class="p-grid">' +
+                '<div><label>Percent off (0 for none)</label><input class="p-field" type="number" min="0" max="99" step="1" inputmode="decimal" data-key="' + key + '" data-field="discount" value="' + pct + '" /></div>' +
+                '<div style="grid-column:span 2"><label>What it is for</label><input class="p-field" type="text" maxlength="60" placeholder="e.g. through 2026" data-key="' + key + '" data-field="discountNote" value="' + esc(why) + '" /></div>' +
+                '</div><p class="p-sub p-badge" data-badge="' + key + '">' + (pct > 0 && pct < 100 ? 'Customers will see: ' + esc(pct + '% off' + (why.trim() ? ' — ' + why.trim() : '')) : 'No discount, so no badge.') + '</p>';
         html += '<p class="p-sub">Description</p><textarea class="p-field" spellcheck="true" data-key="' + key + '" data-field="description">' + esc(s.description || '') + '</textarea>';
         box.innerHTML = html; host.appendChild(box);
       });
@@ -682,14 +696,26 @@
         else if (inp.dataset.min) { s.minutes = s.minutes || {}; s.minutes[inp.dataset.min] = Math.max(0, parseFloat(inp.value) || 0); }
         else if (inp.dataset.field === 'perSqFt') s.perSqFt = Math.max(0, parseFloat(inp.value) || 0);
         else if (inp.dataset.field === 'minutesPerSqFt') s.minutesPerSqFt = Math.max(0, parseFloat(inp.value) || 0);
-        else if (inp.dataset.field === 'promo') s.promo = inp.value.trim();
+        else if (inp.dataset.field === 'discount') s.discount = Math.min(99, Math.max(0, parseFloat(inp.value) || 0));
+        else if (inp.dataset.field === 'discountNote') s.discountNote = inp.value.trim();
         else if (inp.dataset.field === 'description') s.description = inp.value.trim();
       });
     }
     function pricingExample() {
       pricingRead();
+      pricing.order.forEach(function (k) {
+        var el = $('p-services').querySelector('[data-badge="' + k + '"]'); if (!el) return;
+        var sv = pricing.services[k]; if (!sv) return;
+        var d = Number(sv.discount) || 0, w = String(sv.discountNote || '').trim();
+        el.textContent = (d > 0 && d < 100)
+          ? 'Customers will see: ' + d + '% off' + (w ? ' — ' + w : '')
+          : 'No discount, so no badge.';
+      });
       var s = pricing.services.deep, r = s.rates, sum = 3 * r.bedroom + 2 * r.bathroom + r.kitchen + r.dining + r.living;
-      $('p-example').innerHTML = 'Example: a 3-bed, 2-bath home with kitchen, dining and living room, deep clean = <b>' + money(sum) + '</b>.';
+      var d = Number(s.discount) || 0;
+      var net = (d > 0 && d < 100) ? sum * (1 - d / 100) : sum;
+      $('p-example').innerHTML = 'Example: a 3-bed, 2-bath home with kitchen, dining and living room, deep clean = <b>' + money(net) + '</b>' +
+        (net !== sum ? ' <span style="opacity:.7">(' + money(sum) + ' less ' + d + '%)</span>' : '') + '.';
     }
     $('pricing-form').addEventListener('input', pricingExample);
 
@@ -700,7 +726,8 @@
         if (s.rates) base.rates = s.rates; if (s.minutes) base.minutes = s.minutes;
         if (typeof s.perSqFt === 'number') base.perSqFt = s.perSqFt;
         if (typeof s.minutesPerSqFt === 'number') base.minutesPerSqFt = s.minutesPerSqFt;
-        if (typeof s.promo === 'string') base.promo = s.promo;
+        if (typeof s.discount === 'number') base.discount = s.discount;
+        if (typeof s.discountNote === 'string') base.discountNote = s.discountNote;
         if (typeof s.description === 'string') base.description = s.description;
       });
       return p;
@@ -721,7 +748,7 @@
       $('p-save').disabled = true; status('p-status', 'Saving\u2026');
       var payload = { services: {} };
       Object.keys(pricing.services).forEach(function (k) {
-        var s = pricing.services[k], o = { promo: s.promo || '', description: s.description || '' };
+        var s = pricing.services[k], o = { discount: Number(s.discount) || 0, discountNote: s.discountNote || '', description: s.description || '' };
         if (s.rates) o.rates = s.rates; if (s.minutes) o.minutes = s.minutes;
         if (s.perSqFt !== undefined) { o.perSqFt = s.perSqFt; o.minutesPerSqFt = s.minutesPerSqFt || 0; }
         payload.services[k] = o;

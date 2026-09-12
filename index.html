@@ -1,4 +1,16 @@
-<!-- HCC site — v45 (admin v12) — on top of v44 (admin v11):
+<!-- HCC site — v46 (admin v13) — on top of v45 (admin v12):
+     REAL DISCOUNTS. Heather sets a percent and what it is for, per service,
+     in admin. The badge is BUILT from those two, so a badge cannot exist
+     without a discount behind it. Percent at 0 means no discount, no badge,
+     and a page identical to before the feature existed.
+     The discount comes off the TOTAL, not off each room rate: the customer
+     sees the full prices, then a line saying what came off, then the total.
+     This replaces the free-text promo field, which let the site advertise
+     "15% off — through 2026" while charging full price on every service.
+     Legacy promo text in a saved sheet is deliberately NOT honoured — it was
+     a claim with no arithmetic behind it. Until Heather sets a real percent,
+     no badge appears anywhere.
+     Previously, v45:
      Estimated times rebuilt at $30 per cleaner-hour, per UserSubmit, after he
      said the old figures were not survivable — a 3 bed / 2 bath weekly read
      2 hr 15 min. It now reads 5 hr 13 min. Every service scaled from its own
@@ -34,9 +46,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev45.12 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev46.13 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev45.12=site build plus admin build.
+     v1=first live deployment, rev46.13=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -548,6 +560,7 @@
     .q-sum table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .q-sum td { padding: 6px 0; vertical-align: top; }
     .q-sum td:last-child { text-align: right; white-space: nowrap; }
+    .q-sum tr.disc td { color: var(--taupe); font-weight: 700; padding-top: 8px; }
     .q-sum tr.total td { border-top: 1px solid rgba(156,139,118,.35); padding-top: 12px; font-size: 20px; font-weight: 800; }
     .q-sum tr.time td { color: var(--muted); font-size: 12px; padding-top: 4px; }
     .q-sum .promo { display: inline-block; margin-top: 10px; padding: 3px 8px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--charcoal); background: var(--taupe); border-radius: 4px; }
@@ -1221,7 +1234,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev45.12</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev46.13</span>
   </div>
 
   <script src="quote-doc.js"></script>
@@ -1524,41 +1537,41 @@
         weekly:   { name: "Weekly Clean",    short: "Every week",
                     rates: { bedroom: 18, bathroom: 24, kitchen: 27, dining: 12, living: 15, other: 10 },
                     minutes: { bedroom: 35, bathroom: 46, kitchen: 58, dining: 23, living: 35, other: 23 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Routine upkeep visit every week \u2014 kitchens, bathrooms, floors, dusting, and trash, keeping the home consistently tidy." },
         biweekly: { name: "Bi-Weekly Clean", short: "Every other week",
                     rates: { bedroom: 20, bathroom: 26, kitchen: 29, dining: 13, living: 16, other: 11 },
                     minutes: { bedroom: 40, bathroom: 49, kitchen: 62, dining: 24, living: 36, other: 24 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Routine clean every two weeks \u2014 same coverage as the weekly clean, with a bit more buildup to address each visit." },
         monthly:  { name: "Monthly Clean",   short: "Once a month",
                     rates: { bedroom: 22, bathroom: 29, kitchen: 33, dining: 14, living: 18, other: 12 },
                     minutes: { bedroom: 44, bathroom: 56, kitchen: 67, dining: 27, living: 40, other: 27 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Once-a-month refresh \u2014 full standard clean plus extra attention to areas that accumulate buildup between visits." },
         deep:     { name: "Deep Clean",      short: "Top to bottom",
                     rates: { bedroom: 32, bathroom: 45, kitchen: 50, dining: 20, living: 25, other: 16 },
                     minutes: { bedroom: 67, bathroom: 86, kitchen: 95, dining: 38, living: 57, other: 38 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Thorough top-to-bottom clean \u2014 baseboards, inside appliances, behind and under furniture, and detailed scrubbing beyond a routine visit." },
         movein:   { name: "Move-In Clean",   short: "Before you unpack",
                     rates: { bedroom: 32, bathroom: 45, kitchen: 48, dining: 20, living: 24, other: 15 },
                     minutes: { bedroom: 65, bathroom: 86, kitchen: 97, dining: 39, living: 54, other: 39 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Deep clean of an empty home before belongings arrive \u2014 same thorough coverage as a move-out clean, so everything is sanitized and fresh on day one." },
         moveout:  { name: "Move-Out Clean",  short: "Ready for the walkthrough",
                     rates: { bedroom: 34, bathroom: 48, kitchen: 52, dining: 21, living: 27, other: 17 },
                     minutes: { bedroom: 70, bathroom: 91, kitchen: 104, dining: 41, living: 59, other: 41 },
-                    promo: "15% off \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Deep clean of an emptied home for landlord inspection or the next tenant \u2014 inside cabinets and appliances, baseboards, closets, and all rooms top to bottom." },
         construction: { name: "Construction Clean", short: "Priced by square foot",
                     perSqFt: 0.30, minutesPerSqFt: 0.07,
-                    promo: "Limited-time price \u2014 through 2026",
+                    discount: 0, discountNote: "",
                     description: "Post-renovation cleanup \u2014 clears dust and debris, wipes down all surfaces, cleans windows, fixtures, and vents, and detail-cleans floors." },
         spring:   { name: "Spring Clean", short: "Seasonal top-to-bottom clean",
                     rates: { bedroom: 19, bathroom: 27, kitchen: 30, dining: 12, living: 15, other: 10 },
                     minutes: { bedroom: 40, bathroom: 51, kitchen: 57, dining: 23, living: 34, other: 23 },
-                    promo: "",
+                    discount: 0, discountNote: "",
                     description: "Our full deep clean at the seasonal rate \u2014 the same top-to-bottom detail as a standard deep clean. Becoming a repeat client offers additional discounts." }
       }
     };
@@ -1570,6 +1583,24 @@
     var q = { service: "weekly", counts: { bedroom: 3, bathroom: 2, kitchen: 1, dining: 1, living: 1, other: 0 }, sqft: 0, ref: "" };
     function quoteRef() { if (!q.ref) q.ref = 'HCC-' + Date.now().toString(36).toUpperCase().slice(-6); return q.ref; }
     var money = function (n) { return "$" + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, ""); };
+    /* v46: DISCOUNTS. Heather sets a percentage and what it is for, per
+       service, in admin. Both together make the badge; neither alone does.
+       No discount means no badge and no discount line — the page looks
+       exactly as it did before the feature existed.
+
+       The discount comes off the TOTAL, not off each room rate, so the
+       customer sees the full prices and then sees what came off. */
+    function svcDiscount(s) {
+      var d = Number(s && s.discount) || 0;
+      return (d > 0 && d < 100) ? d : 0;
+    }
+    function svcBadge(s) {
+      var d = svcDiscount(s);
+      if (!d) return '';
+      var why = String((s && s.discountNote) || '').trim();
+      return (Math.round(d * 100) / 100) + '% off' + (why ? ' — ' + why : '');
+    }
+
     function duration(mins) {
       if (!mins || mins <= 0) return "";
       var h = Math.floor(mins / 60), m = Math.round(mins % 60);
@@ -1618,7 +1649,11 @@
           lines.push({ label: n + ' \u00d7 ' + r[1].toLowerCase() + (n > 1 ? 's' : '') + ' @ ' + money(s.rates[r[0]] || 0), amount: amt });
         });
       }
-      return { service: s, lines: lines, total: total, minutes: minutes };
+      var pct = svcDiscount(s);
+      var off = pct ? total * pct / 100 : 0;
+      return { service: s, lines: lines, subtotal: total, discountPct: pct,
+               discountAmount: off, total: total - off, minutes: minutes,
+               badge: svcBadge(s) };
     }
 
     function quoteRender() {
@@ -1634,10 +1669,13 @@
       html += '<tr><td colspan="2" style="font-weight:700;color:var(--ivory)">' + s.name + '</td></tr>';
       c.lines.forEach(function (l) { html += '<tr><td>' + l.label + '</td><td>' + money(l.amount) + '</td></tr>'; });
       if (!c.lines.length) html += '<tr><td colspan="2" style="color:var(--muted)">Add ' + (s.perSqFt !== undefined ? 'the square feet' : 'rooms') + ' to see a price.</td></tr>';
+      if (c.discountAmount > 0) {
+        html += '<tr class="disc"><td>' + escHtml(c.badge) + '</td><td>−' + money(c.discountAmount) + '</td></tr>';
+      }
       html += '<tr class="total"><td>Your quote</td><td>' + money(c.total) + '</td></tr>';
       if (c.minutes > 0) html += '<tr class="time"><td>Estimated time on site</td><td>' + duration(c.minutes) + '</td></tr>';
       html += '</table>';
-      if (s.promo) html += '<span class="promo">' + s.promo + '</span>';
+      if (c.badge) html += '<span class="promo">' + escHtml(c.badge) + '</span>';
       html += '<p class="fine">Per visit, before tax. This is an instant estimate from the counts you entered; Heather confirms the final price after seeing the home. Times shown are an estimate for one cleaner in a home of that size. Actual time varies with the condition of the home, clutter and access, and Heather confirms it after seeing the home. Becoming a repeat client offers additional discounts.</p>';
       document.getElementById('q-sum').innerHTML = html;
     }
@@ -1646,8 +1684,12 @@
       var c = quoteCompute(), out = [];
       out.push('QUOTE REQUEST \u2014 Heather\'s Crowned Cleaning');
       out.push('Ref: ' + quoteRef());
-      out.push('Service: ' + c.service.name + (c.service.promo ? ' (' + c.service.promo + ')' : ''));
+      out.push('Service: ' + c.service.name + (c.badge ? ' (' + c.badge + ')' : ''));
       c.lines.forEach(function (l) { out.push('  ' + l.label + ' = ' + money(l.amount)); });
+      if (c.discountAmount > 0) {
+        out.push('Subtotal: ' + money(c.subtotal));
+        out.push(c.badge + ': -' + money(c.discountAmount));
+      }
       out.push('TOTAL (per visit, before tax): ' + money(c.total));
       if (c.minutes > 0) out.push('Estimated time on site: ' + duration(c.minutes));
       if (c.minutes > 0) out.push('  (estimate for one cleaner; varies with condition, clutter and access)');
@@ -1763,8 +1805,14 @@
         area: v('q-area'), notes: v('q-notes'),
         serviceName: c.service.name,
         serviceDesc: c.service.description || '',
-        badge: c.service.promo || '',
-        lineItems: c.lines.map(function (l) { return { label: l.label, amount: money(l.amount) }; }),
+        badge: c.badge,
+        /* the discount rides along as its own line so a quote printed months
+           from now still shows what came off, without the sheet template
+           needing to know discounts exist */
+        lineItems: c.lines.map(function (l) { return { label: l.label, amount: money(l.amount) }; })
+                     .concat(c.discountAmount > 0
+                       ? [{ label: c.badge, amount: '−' + money(c.discountAmount) }]
+                       : []),
         totalText: money(c.total),
         timeEstimate: c.minutes > 0 ? duration(c.minutes) : '',
         logoSrc: document.querySelector('.mark-img').getAttribute('src')
@@ -1785,7 +1833,8 @@
       if (s.perSqFt !== undefined) return null;
       var total = 0, mins = 0;
       HCC_PRICES.rooms.forEach(function (r) { var n = TYPICAL[r[0]] || 0; total += n * (s.rates[r[0]] || 0); mins += n * ((s.minutes && s.minutes[r[0]]) || 0); });
-      return { total: total, minutes: mins };
+      var pct = svcDiscount(s);
+      return { total: pct ? total * (1 - pct / 100) : total, minutes: mins };
     }
     function serviceCard(key, s, featured) {
       var el = document.createElement(featured ? 'div' : 'article');
@@ -1793,9 +1842,10 @@
       var typ = typicalFor(s), html = '';
       if (featured) html += '<p class="kick">This season</p>';  // spring clean, no deal framing
       html += '<h3>' + escHtml(s.name) + '</h3>';
-      if (s.promo && !featured) html += '<span class="badge">' + escHtml(s.promo) + '</span>';
+      var badge = svcBadge(s);
+      if (badge && !featured) html += '<span class="badge">' + escHtml(badge) + '</span>';
       html += '<p>' + escHtml(s.description || '') + '</p>';
-      if (featured && s.promo) html += '<p style="font-style:normal;font-family:Archivo,system-ui,sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--taupe);margin-top:12px">' + escHtml(s.promo) + '</p>';
+      if (featured && badge) html += '<p style="font-style:normal;font-family:Archivo,system-ui,sans-serif;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--taupe);margin-top:12px">' + escHtml(badge) + '</p>';
       html += '<div class="from">';
       if (typ) {
         html += 'Typical home<b>' + escHtml(money(typ.total)) + '</b>' + (typ.minutes ? '<span>About ' + escHtml(duration(typ.minutes)) + ' on site</span>' : '');
@@ -1882,7 +1932,7 @@
     var showcase = { boxes: [], timer: null, cursor: 0, next: 0 };
     function fbGlyph() { var p = document.querySelector('.socials svg path'); return p ? p.getAttribute('d') : ''; }
     function socialGlyphs() { return Array.prototype.map.call(document.querySelectorAll('.socials .soc-icon svg'), function (s) { return s.outerHTML; }).join(''); }
-    function typicalWeekly() { var s = HCC_PRICES.services.weekly; if (!s) return ''; var tot = 0; HCC_PRICES.rooms.forEach(function (r) { tot += (TYPICAL[r[0]] || 0) * (s.rates[r[0]] || 0); }); return money(tot); }
+    function typicalWeekly() { var s = HCC_PRICES.services.weekly; if (!s) return ''; var tot = 0; HCC_PRICES.rooms.forEach(function (r) { tot += (TYPICAL[r[0]] || 0) * (s.rates[r[0]] || 0); }); var pct = svcDiscount(s); return money(pct ? tot * (1 - pct / 100) : tot); }
     var SHOW = [
       { id: 'gallery',  kick: 'Gallery',  title: 'Before and after.', go: 'See the work',
         body: function () { if (wall.pairs.length) { var p = wall.pairs[0]; return '<div class="pair"><img src="' + p.before + '" alt="" /><img src="' + p.after + '" alt="" /></div>'; } return '<p>Real homes, before they got a crown and after.</p>'; } },
@@ -1941,7 +1991,11 @@
         if (s.minutes) base.minutes = s.minutes;
         if (typeof s.perSqFt === 'number') base.perSqFt = s.perSqFt;
         if (typeof s.minutesPerSqFt === 'number') base.minutesPerSqFt = s.minutesPerSqFt;
-        if (typeof s.promo === 'string') base.promo = s.promo;
+        /* legacy sheets carry a free-text promo and no discount. It is
+           deliberately NOT honoured: it was a claim with no arithmetic behind
+           it. A badge now exists only when a real discount does. */
+        if (typeof s.discount === 'number') base.discount = s.discount;
+        if (typeof s.discountNote === 'string') base.discountNote = s.discountNote;
         if (typeof s.description === 'string') base.description = s.description;
       });
       quoteRender();
