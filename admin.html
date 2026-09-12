@@ -1,4 +1,6 @@
-<!-- HCC admin — v20 — the blank quote sheet reworked: two pages instead of
+<!-- HCC admin — v21 — the sheet's watermark is now MESH.1's document stamp,
+     placed per MESH.1's own placement guide. Otherwise v20, the blank quote
+     sheet reworked: two pages instead of
      four, ML watermark, the site's footer on paper, and its own frozen version
      number (see SHEET_TAG). Otherwise v19, where a quote began OPENING to the
      whole thing: every line, the
@@ -26,7 +28,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.20 — the 20 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.21 — the 21 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -290,31 +292,41 @@
     /* v20: the blank quote printed on FOUR sheets. Two, or it is not usable.
        Everything below is tightening, plus a watermark and the site footer. */
     .paper .sheet { position: relative; }
-    .paper .wm {
-      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-      pointer-events: none; z-index: 0;
-    }
-    .paper .wm img { width: 58%; max-width: 320px; opacity: .055; }
+    /* v21: MESH.1's document stamp, placed per its own guide rather than by
+       eye. This sheet LEAVES the building — Heather hands it to customers — so
+       it is the guide's corner stamp case, not its full-page wash, which is
+       for drafts and internal copies. The EMBLEM, not the full lockup: the
+       guide's floor for the lockup is 220px and this footer cannot spare that
+       much width without pushing the page past Letter. Below 220 the three
+       text lines turn to mush, and the guide says use an emblem rather than
+       shrink them. 90px against a 150px native asset, so only ever scaled
+       DOWN. DarkInk because plain grayscale disappears on a white page.
+       The file is MESH.1's byte for byte. Do not re-export it: the guide warns
+       that anything which flattens the alpha leaves a white box. */
+    .paper .wm { position: absolute; right: 0; bottom: 0; pointer-events: none; z-index: 0; }
+    .paper .wm img { width: 90px; opacity: .45; }
     .paper .sheet > *:not(.wm) { position: relative; z-index: 1; }
-    .paper h4 { margin: 8px 0 4px; font-size: 9px; }
-    .paper th, .paper td { padding: 3px 6px; }
+    .paper h4 { margin: 6px 0 3px; font-size: 9px; }
+    .paper th, .paper td { padding: 2px 6px; }
     .paper th { font-size: 9px; }
-    .paper .notes { height: 42px; }
-    .paper .sig { margin-top: 10px; }
-    .paper .fine { margin-top: 8px; font-size: 8.5px; line-height: 1.4; }
-    .paper .ph { padding-bottom: 8px; }
+    .paper .notes { height: 30px; }
+    .paper .sig { margin-top: 8px; }
+    .paper .fine { margin-top: 7px; font-size: 8px; line-height: 1.38; }
+    .paper .ph { padding-bottom: 6px; }
     .paper .ph img { width: 38px; height: 38px; }
     .paper .ph .biz b { font-size: 14px; }
     .paper .ph .qt b { font-size: 17px; }
     .paper .ph .qt span { margin-top: 4px; font-size: 10px; }
-    .paper .cust { gap: 6px 20px; }
-    .paper .svcs { gap: 4px 10px; }
+    .paper .cust { gap: 5px 20px; }
+    .paper .svcs { gap: 3px 10px; }
     .paper tr.tot td { font-size: 13px; }
-    .paper .line { height: 13px; }
+    .paper .line { height: 12px; }
     .paper table { page-break-inside: avoid; break-inside: avoid; }
     /* the site's own footer, on paper */
-    .paper .sf { margin-top: 14px; padding-top: 8px; border-top: 1px solid #1a1816; text-align: center; font-size: 9.5px; color: #555; line-height: 1.55; }
-    .paper .sf .row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; text-align: left; }
+    .paper .sf { margin-top: 10px; padding-top: 6px; padding-right: 104px; border-top: 1px solid #1a1816; text-align: left; font-size: 9.5px; color: #555; line-height: 1.45; }
+    /* screen only: on paper the stamp is ALWAYS the bottom-right corner stamp */
+    @media screen and (max-width: 700px) { .paper .sf { padding-right: 0; } .paper .wm { position: static; text-align: right; } }
+    .paper .sf .row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
     .paper .sf .tag { display: block; margin-top: 5px; text-align: right; font-size: 7px; letter-spacing: .06em; color: #999; }
     /* rate card: one table carrying rate AND minutes, instead of two tables */
     .paper .card td .mins { display: block; font-size: 8.5px; color: #777; margin-top: 1px; }
@@ -325,9 +337,9 @@
       .wrap > *:not(#panel-upload), .topbar, .tabs, #view-gallery, #view-pricing, .sheet-tools, .foot, #zoom { display: none !important; }
       #view-sheet { display: block !important; }
       .paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0; font-size: 11px; }
-      .paper .wm img { opacity: .07; }
+      .paper .wm img { opacity: .4; }
       .pagebreak { margin-top: 0; }
-      @page { margin: 12mm; }
+      @page { margin: 11mm; }
     }
     @media (max-width: 480px) { .pair-in { gap: 8px; } .drop { font-size: 12px; padding: 10px; } }
   </style>
@@ -489,7 +501,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.20</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.21</span>
     </div>
   </div>
 
@@ -790,7 +802,7 @@
        That is the whole point: a printed quote in a drawer six months from
        now tells you which version of the site it came from. Auto-filling it
        from the live build would destroy exactly that. */
-    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev48.20.1';
+    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev48.21.2';
 
     function sheetFooter(today) {
       return '<div class="sf">' +
@@ -807,7 +819,7 @@
     function renderSheet() {
       var withCard = $('sheet-card').checked;
       var today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-      var wm = '<div class="wm"><img src="ml-watermark.webp" alt="" /></div>';
+      var wm = '<div class="wm"><img src="ml-stamp-emblem-150.png" alt="" /></div>';
       var h = '';
 
       /* ---------------- page 1: the blank quote ---------------- */
