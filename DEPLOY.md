@@ -29,6 +29,35 @@ served by GitHub Pages from this repo as of 2026-09-11.
 
 ---
 
+## ONE COMMITTER PER WORKING TREE
+
+**The site owner is the only chair that commits in
+`11 - LABS/WEB DESIGN LAB/HCC/hcc-site/`.** That is WEBHCC.0.
+
+This rule exists because it was nearly violated. WIRE.2 and WEBHCC.0 were
+both operating that same clone, and WEBHCC.0 caught `DEPLOY.md` sitting
+modified-but-uncommitted between two of its own commands — a WIRE.2 edit
+in flight. `git add -A` in that moment would have committed and published
+another chair's half-finished work to a live client site, under the wrong
+commit message, with no warning to either party. It works in both
+directions. Found by WEBHCC.0, who proposed no fix and left the call to
+the pipeline owner, which was the right instinct.
+
+Discipline was not the fix. Two writers in one tree is the defect.
+
+- **WEBHCC.0** commits and pushes from the site working tree. `add -A`
+  is safe there because nobody else writes to it.
+- **WIRE.2** works from its own clone at
+  `10 - FRONT OFFICE/WIRE.2 HQ/hcc-pipeline-clone/` and pushes from
+  there. Runbook and pipeline changes arrive as commits to pull, never as
+  edits appearing under your feet.
+- **After any pipeline change, `git pull`.** A conflict is normal git and
+  is handled by pulling, not by anyone being careful.
+- If you ever find a file modified in that tree that you did not modify,
+  **stop and ask before committing**. Do not sweep it up.
+
+---
+
 ## The daily loop — this is the whole job
 
 ```
@@ -239,15 +268,20 @@ configuration and is invisible from DNS**, so the original sentence
 asserted something its own evidence could not establish — the exact
 partial-check failure this file's Lessons section already names.
 
-**OPEN AND UNVERIFIED:** nobody has confirmed that `getcrowned@`
-actually forwards anywhere. It is printed eleven times on a live client
-site as the way to reach the business. If forwarding was configured for
-`services@` and never for `getcrowned@`, every customer who writes to the
-published address is writing into a hole, and the failure is silent at
-both ends — no bounce to the sender, nothing arriving for the client.
-This cannot be checked from DNS or from this repo. It needs UserSubmit
-to look in the Porkbun panel. Raised by WEBHCC.0 as the highest-value
-open item on this site.
+**RESOLVED 2026-09-11 by UserSubmit**, who is the only one who can see
+the Porkbun panel. Verbatim: "both emails forward." Evidence state
+USER-SUPPLIED, direct, not relayed.
+
+So `getcrowned@` reaches the client, `services@` still reaches the client
+too, and the published address on the live page is safe. No customer
+email was ever going anywhere but through.
+
+The shape is worth keeping now that this file is where people look. The
+address on the page was never the problem. Two aliases forward, the
+documents named one and the page prints the other, and both work. The
+document was wrong about which address the site publishes, and wrong
+about MX and SPF carrying an address at all. Neither error ever reached
+a customer.
 
 Porkbun static hosting is disabled. Porkbun is registrar and DNS only.
 
