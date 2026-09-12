@@ -1,4 +1,5 @@
-<!-- HCC site — v50 (admin v25) — on top of v49:
+<!-- HCC site — v51 (admin v26) — a saved price sheet no longer overrides
+     every field. See pricing-core.js. Previously, v50 (admin v25) — on top of v49:
      GALLERY CAPTIONS MOVED OFF THE PHOTOS. They were absolutely positioned
      over the bottom of each tile, gradient-faded, and clamped to two lines
      with overflow hidden — so any description longer than a few words was
@@ -82,9 +83,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev50.25 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev51.26 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev50.25=site build plus admin build.
+     v1=first live deployment, rev51.26=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -1270,9 +1271,10 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev50.25</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev51.26</span>
   </div>
 
+  <script src="pricing-core.js"></script>
   <script src="quote-doc.js"></script>
   <script>
     // Rotating owner phrases: one is picked at random on every view.
@@ -1623,6 +1625,11 @@
                     description: "A full deep clean plus the seasonal reset \u2014 everything in the deep clean, and then the places that only get done once a year. Becoming a repeat client offers additional discounts." }
       }
     };
+
+    /* v51: an untouched copy of the built-in table. applyPricing() merges INTO
+       HCC_PRICES, so without a pristine copy there is nothing left to compare
+       a saved sheet against. */
+    var HCC_DEFAULTS = JSON.parse(JSON.stringify(HCC_PRICES));
 
     // Where "Send quote" goes. web3formsKey: an access key from web3forms.com
     // tied to Heather's inbox. Empty = fall back to the customer's own mail app.
@@ -2037,22 +2044,21 @@
     // v28: live pricing. Loads Heather's saved sheet the first time the
     // Quote page opens; the block above stays as the fallback.
     var pricingState = "idle";
+    /* v51: the saved sheet no longer wins every field. A three-way merge keeps
+       what Heather actually changed and takes the current built-in value for
+       everything she did not, so a corrected default reaches customers without
+       anyone loading and re-saving in admin. The rule lives in pricing-core.js,
+       shared with the admin, so the two cannot disagree about what a saved
+       sheet means. Legacy free-text promo is still ignored: it was a claim
+       with no arithmetic behind it. */
     function applyPricing(data) {
       if (!data || typeof data !== 'object' || !data.services) return;
-      if (typeof data.discount === 'number') HCC_PRICES.discount = data.discount;
-      if (typeof data.discountNote === 'string') HCC_PRICES.discountNote = data.discountNote;
-      Object.keys(data.services).forEach(function (k) {
-        var base = HCC_PRICES.services[k], s = data.services[k]; if (!base || !s) return;
-        if (s.rates) base.rates = s.rates;
-        if (s.minutes) base.minutes = s.minutes;
-        if (typeof s.perSqFt === 'number') base.perSqFt = s.perSqFt;
-        if (typeof s.minutesPerSqFt === 'number') base.minutesPerSqFt = s.minutesPerSqFt;
-        /* legacy sheets carry a free-text promo and no discount. It is
-           deliberately NOT honoured: it was a claim with no arithmetic behind
-           it. A badge now exists only when a real discount does. */
-        if (typeof s.discount === 'number') base.discount = s.discount;
-        if (typeof s.discountNote === 'string') base.discountNote = s.discountNote;
-        if (typeof s.description === 'string') base.description = s.description;
+      if (!window.HCCPricing) return;
+      var merged = window.HCCPricing.merge(HCC_DEFAULTS, data);
+      HCC_PRICES.discount = merged.discount;
+      HCC_PRICES.discountNote = merged.discountNote;
+      Object.keys(merged.services).forEach(function (k) {
+        if (HCC_PRICES.services[k]) HCC_PRICES.services[k] = merged.services[k];
       });
       quoteRender();
       renderServices();

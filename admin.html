@@ -1,4 +1,9 @@
-<!-- HCC admin — v25 — corrects the comment beside the stamp, which claimed
+<!-- HCC admin — v26 — two things. Photos can be ROTATED 90 degrees after
+     upload, because phone photos arrive sideways. And a saved price sheet no
+     longer blocks code corrections: pricing-core.js merges field by field, so
+     "Load the built-in prices" is an escape hatch rather than a step you take
+     after every deploy. Otherwise v25, which corrected the comment beside the
+     stamp, which claimed
      its size and opacity departed from MESH.1's guide. They do not: the guide
      asks for opacity to be set at placement. Comment only, no pixel moved.
      Otherwise v24, where the stamp went down to 40px at 12%, below MESH.1's guide
@@ -38,7 +43,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev50.25 — the 25 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev51.26 — the 26 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -106,6 +111,10 @@
     .drop .look { position: absolute; right: 8px; bottom: 8px; z-index: 2; padding: 5px 9px; font-size: 11px; font-weight: 600; color: var(--ivory); background: rgba(19,17,16,.7); border: 0; border-radius: 6px; display: none; }
     .drop.has .look { display: block; }
     .drop .clear { position: absolute; right: 8px; top: 8px; z-index: 2; width: 26px; height: 26px; font-size: 16px; line-height: 1; color: var(--ivory); background: rgba(19,17,16,.7); border: 0; border-radius: 6px; display: none; }
+    /* v26: phone photos arrive sideways often enough to need this */
+    .drop .rot { position: absolute; right: 40px; top: 8px; z-index: 2; width: 26px; height: 26px; font-size: 15px; line-height: 1; color: var(--ivory); background: rgba(19,17,16,.7); border: 0; border-radius: 6px; display: none; }
+    .drop.has .rot { display: block; }
+    .drop .rot:disabled { opacity: .5; }
     .drop.has .clear { display: block; }
 
     hr.rule { width: 40px; height: 2px; background: var(--taupe); border: 0; margin: 40px 0 22px; }
@@ -421,7 +430,7 @@
             <img id="img-before" alt="" />
             <span class="empty"><strong>Before</strong>Drop a photo here, or tap to choose.</span>
             <button type="button" class="look" data-side="before">Look closer</button>
-            <button type="button" class="clear" data-side="before" aria-label="Remove before photo">&times;</button>
+            <button type="button" class="rot" data-side="before" aria-label="Rotate before photo 90 degrees">↻</button><button type="button" class="clear" data-side="before" aria-label="Remove before photo">&times;</button>
           </label>
           <label class="drop" id="drop-after" for="file-after">
             <span class="tag">After</span>
@@ -429,7 +438,7 @@
             <img id="img-after" alt="" />
             <span class="empty"><strong>After</strong>Drop a photo here, or tap to choose.</span>
             <button type="button" class="look" data-side="after">Look closer</button>
-            <button type="button" class="clear" data-side="after" aria-label="Remove after photo">&times;</button>
+            <button type="button" class="rot" data-side="after" aria-label="Rotate after photo 90 degrees">↻</button><button type="button" class="clear" data-side="after" aria-label="Remove after photo">&times;</button>
           </label>
         </div>
         <p class="hint">Each photo is resized before upload so it loads fast. Tap a preview to look closer.</p>
@@ -462,7 +471,7 @@
           <p class="p-example" id="p-example"></p>
           <button class="btn" type="submit" id="p-save">Save prices</button>
           <button class="btn btn-quiet" type="button" id="p-reset" style="margin-left:8px;">Back to the last saved</button>
-          <button class="btn btn-quiet" type="button" id="p-defaults" style="margin-left:8px;">Load the built-in prices</button>
+          <button class="btn btn-quiet" type="button" id="p-defaults" style="margin-left:8px;">Start over from the built-in prices</button>
           <p class="status" id="p-status"></p>
         </form>
       </div>
@@ -495,7 +504,7 @@
             <img id="img-rev" alt="" style="position:static;width:100%;height:auto;max-height:340px;object-fit:contain;" />
             <span class="empty"><strong>Image</strong>Drop a screenshot here, or tap to choose.</span>
             <button type="button" class="look" data-side="rev">Look closer</button>
-            <button type="button" class="clear" data-side="rev" aria-label="Remove image">&times;</button>
+            <button type="button" class="rot" data-side="rev" aria-label="Rotate image 90 degrees">↻</button><button type="button" class="clear" data-side="rev" aria-label="Remove image">&times;</button>
           </label>
           <label for="rev-name">Who said it (optional)</label>
           <input class="q-input" id="rev-name" type="text" style="width:100%;padding:12px 14px;font:inherit;font-size:16px;color:var(--ivory);background:rgba(248,245,239,.04);border:1px solid rgba(156,139,118,.35);border-radius:8px;" placeholder="e.g. Sarah M., Tremonton" />
@@ -530,7 +539,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev50.25</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev51.26</span>
     </div>
   </div>
 
@@ -540,6 +549,7 @@
     <p id="zoom-label"></p>
   </div>
 
+  <script src="pricing-core.js"></script>
   <script src="quote-doc.js"></script>
   <script>
     // Same two values as index.html. Anon key is public by design; the
@@ -621,7 +631,9 @@
                     description: "A full deep clean plus the seasonal reset \u2014 everything in the deep clean, and then the places that only get done once a year. Becoming a repeat client offers additional discounts." }
       }
     };
-    var PRICE_DEFAULTS = HCC_PRICES;
+    /* v26: a pristine copy. The merge compares a saved sheet against the
+       built-in table, so the built-in table must never be edited in place. */
+    var PRICE_DEFAULTS = JSON.parse(JSON.stringify(HCC_PRICES));
     var pricing = JSON.parse(JSON.stringify(PRICE_DEFAULTS));
     var pricingSaved = null;
 
@@ -1079,20 +1091,11 @@
 
     $('pricing-form').addEventListener('input', pricingExample);
 
+    /* v26: delegates to pricing-core.js, the same merge the public site runs.
+       Keeping a second copy of this rule here is how the admin would start
+       showing Heather prices that customers are not being quoted. */
     function mergePricing(saved) {
-      var p = JSON.parse(JSON.stringify(PRICE_DEFAULTS));
-      if (saved && typeof saved.discount === 'number') p.discount = saved.discount;
-      if (saved && typeof saved.discountNote === 'string') p.discountNote = saved.discountNote;
-      if (saved && saved.services) Object.keys(saved.services).forEach(function (k) {
-        var base = p.services[k], s = saved.services[k]; if (!base || !s) return;
-        if (s.rates) base.rates = s.rates; if (s.minutes) base.minutes = s.minutes;
-        if (typeof s.perSqFt === 'number') base.perSqFt = s.perSqFt;
-        if (typeof s.minutesPerSqFt === 'number') base.minutesPerSqFt = s.minutesPerSqFt;
-        if (typeof s.discount === 'number') base.discount = s.discount;
-        if (typeof s.discountNote === 'string') base.discountNote = s.discountNote;
-        if (typeof s.description === 'string') base.description = s.description;
-      });
-      return p;
+      return window.HCCPricing.merge(PRICE_DEFAULTS, saved);
     }
     function loadPricing() {
       if (!client) return;
@@ -1108,7 +1111,11 @@
     $('pricing-form').addEventListener('submit', function (e) {
       e.preventDefault(); pricingRead();
       $('p-save').disabled = true; status('p-status', 'Saving\u2026');
-      var payload = { discount: Number(pricing.discount) || 0, discountNote: pricing.discountNote || '', services: {} };
+      /* basedOn is what makes the next merge able to tell an edit from an
+         untouched default. Without it every field looks deliberate and code
+         corrections stop reaching the site again. */
+      var payload = { discount: Number(pricing.discount) || 0, discountNote: pricing.discountNote || '',
+                      basedOn: window.HCCPricing.snapshot(PRICE_DEFAULTS), services: {} };
       Object.keys(pricing.services).forEach(function (k) {
         var s = pricing.services[k], o = { discount: Number(s.discount) || 0, discountNote: s.discountNote || '', description: s.description || '' };
         if (s.rates) o.rates = s.rates; if (s.minutes) o.minutes = s.minutes;
@@ -1129,7 +1136,7 @@
     $('p-defaults').addEventListener('click', function () {
       pricing = JSON.parse(JSON.stringify(PRICE_DEFAULTS));
       pricingRender();
-      status('p-status', 'Loaded the built-in prices and times. Nothing is live until you press Save prices.');
+      status('p-status', 'Loaded the built-in prices and times, replacing everything in this form. You do NOT need this to pick up updates \u2014 those arrive on their own now. Nothing is live until you press Save prices.');
     });
     $('p-reset').addEventListener('click', function () { pricing = pricingSaved ? JSON.parse(JSON.stringify(pricingSaved)) : JSON.parse(JSON.stringify(PRICE_DEFAULTS)); pricingRender(); status('p-status', pricingSaved ? 'Back to the last saved prices.' : 'Back to the starting prices.'); });
     pricingRender();
@@ -1188,6 +1195,9 @@
         e.preventDefault(); e.stopPropagation();
         if (prepared[side]) openZoom(prepared[side].url, side === 'before' ? 'Before getting a crown' : side === 'after' ? 'After being crowned' : 'Review image');
       });
+      drop.querySelector('.rot').addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation(); rotate(side);
+      });
       drop.querySelector('.clear').addEventListener('click', function (e) {
         e.preventDefault(); e.stopPropagation(); clear(side);
       });
@@ -1207,6 +1217,50 @@
         gate();
       }).catch(function () { status('upload-status', 'That file could not be read as a photo.', 'err'); });
     }
+    /* v26: ROTATE. Turns the PREPARED blob rather than the original file, so
+       a rotate costs one re-encode of an already-shrunk image instead of
+       re-reading a 12MP phone photo. Rotating four times returns to where it
+       started, at the cost of four JPEG generations — acceptable for a control
+       nobody presses more than once or twice, and the alternative is holding
+       the original file in memory for the whole session.
+
+       The canvas swaps width and height and the context is rotated a quarter
+       turn about the new centre; drawing at the negated half-extents of the
+       ORIGINAL puts the image back on the canvas the right way round. */
+    function rotate(side) {
+      var cur = prepared[side];
+      if (!cur) return;
+      var btn = document.querySelector('.rot[data-side="' + side + '"]');
+      if (btn) btn.disabled = true;
+      var target = side === 'rev' ? 'rev-status' : 'upload-status';
+      status(target, 'Rotating\u2026');
+      var img = new Image();
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight;
+        var c = document.createElement('canvas');
+        c.width = h; c.height = w;
+        var x = c.getContext('2d');
+        x.translate(h / 2, w / 2);
+        x.rotate(Math.PI / 2);
+        x.drawImage(img, -w / 2, -h / 2);
+        c.toBlob(function (blob) {
+          if (btn) btn.disabled = false;
+          if (!blob) { status(target, 'That photo could not be rotated.', 'err'); return; }
+          URL.revokeObjectURL(cur.url);
+          var out = { blob: blob, width: h, height: w, url: URL.createObjectURL(blob) };
+          prepared[side] = out;
+          $('img-' + side).src = out.url;
+          status(target, 'Rotated. ' + Math.round(blob.size / 1024) + ' KB, ' + out.width + '\u00d7' + out.height + '.');
+        }, 'image/jpeg', JPEG_Q);
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = function () {
+        if (btn) btn.disabled = false;
+        status(target, 'That photo could not be rotated.', 'err');
+      };
+      img.src = URL.createObjectURL(cur.blob);
+    }
+
     function clear(side) {
       if (prepared[side]) URL.revokeObjectURL(prepared[side].url);
       prepared[side] = null;
