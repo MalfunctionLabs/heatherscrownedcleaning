@@ -1,4 +1,7 @@
-<!-- HCC site — v54 (admin v28, unchanged) — Call and Send a text added to the
+<!-- HCC site — v55 (admin v28, unchanged) — two ways the ambient loop could
+     silently never start on a phone, both closed. See armSound(). NOT a
+     confirmed fix for UserSubmit's report; it could not be reproduced here.
+     Previously, v54 (admin v28, unchanged) — Call and Send a text added to the
      gallery's "Like what you see?" card. It offered quote, email and Facebook
      and left out the phone number, which is the way most people contact a
      cleaner. Previously, v53 (admin v28, unchanged) — the enlarged gallery view can
@@ -90,9 +93,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev54.28 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev55.28 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev54.28=site build plus admin build.
+     v1=first live deployment, rev55.28=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -1286,7 +1289,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev54.28</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev55.28</span>
   </div>
 
   <script src="pricing-core.js"></script>
@@ -2148,13 +2151,18 @@
 
     var snd = {
       btn: document.getElementById('snd'), ctx: null, gain: null, source: null, buffer: null,
-      ready: false, started: false, muted: false, armed: false
+      ready: false, started: false, muted: false, armed: false, gestured: false
     };
     (function initSound() {
       if (!HCC_AUDIO.src) return;
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC || !window.fetch) return;                       // no Web Audio: page stays silent, button stays hidden
       try { snd.muted = localStorage.getItem('hcc_sound') === 'off'; } catch (e) {}
+      /* v55: arm the gesture listener NOW, not after the download.
+         The loop is 1.3 MB. On a phone that takes seconds, and the first tap
+         almost always lands inside that window — under the old order the
+         listener did not exist yet, so that tap was thrown away. */
+      armSound();
       fetch(HCC_AUDIO.src)
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
         .then(function (ab) { snd.ctx = new AC(); return snd.ctx.decodeAudioData(ab); })
@@ -2191,7 +2199,7 @@
           snd.gain = snd.ctx.createGain(); snd.gain.gain.value = 0; snd.gain.connect(snd.ctx.destination);
           snd.btn.hidden = false;
           paintSound();
-          if (!snd.muted) armSound();
+          if (!snd.muted) soundOn();          // a gesture may already have happened while this downloaded
         })
         .catch(function () { /* missing or undecodable file: no button, no sound */ });
     })();
@@ -2203,15 +2211,20 @@
       snd.started = true;
     }
     function soundOn() {
-      if (!snd.ready) return;
+      /* Called from three places now: the arming gesture, the button, and the
+         moment the buffer finishes decoding. Any of them can be the first, so
+         it has to be safe to call early and safe to call twice. */
+      if (!snd.ready || !snd.ctx) return;
+      if (!snd.gestured && snd.ctx.state !== 'running') return;   // nothing to do yet; the gesture will come back here
       var go = function () {
+        if (snd.ctx.state !== 'running') return;                  // resume did not take; stay armed for the next gesture
         startLoop();
         var now = snd.ctx.currentTime;
         snd.gain.gain.cancelScheduledValues(now);
         snd.gain.gain.setValueAtTime(snd.gain.gain.value, now);
         snd.gain.gain.linearRampToValueAtTime(HCC_AUDIO.volume, now + HCC_AUDIO.fadeSeconds);   // low volume, eased in
       };
-      if (snd.ctx.state === 'suspended') snd.ctx.resume().then(go, function () {}); else go();
+      if (snd.ctx.state !== 'running') snd.ctx.resume().then(go, function () {}); else go();
     }
     function soundOff(quick) {
       if (!snd.ready || !snd.started) return;
@@ -2224,17 +2237,31 @@
       snd.btn.setAttribute('aria-pressed', snd.muted ? 'false' : 'true');
       snd.btn.setAttribute('aria-label', snd.muted ? 'Turn sound on' : 'Turn sound off');
     }
-    // browsers only allow sound after a user gesture: start on the first one
+    /* Browsers only allow sound after a user gesture.
+
+       v55: this used to unhook itself on the FIRST gesture and call soundOn()
+       once. Two ways that lost the sound on a phone, both silent:
+
+         - the listener was attached only after the file had downloaded and
+           decoded, so a tap during loading hit nothing
+         - if resume() did not take on that one attempt, the listeners were
+           already gone and nothing tried again
+
+       Now it arms immediately, remembers that a gesture happened, and stays
+       armed until audio is genuinely running. */
     function armSound() {
       if (snd.armed) return; snd.armed = true;
-      var once = function () {
-        ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.removeEventListener(ev, once, true); });
+      var onGesture = function () {
+        snd.gestured = true;
         if (!snd.muted) soundOn();
+        if (snd.ctx && snd.ctx.state === 'running' && snd.started) {
+          ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.removeEventListener(ev, onGesture, true); });
+        }
       };
-      ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, once, true); });
-      if (snd.ctx.state === 'running') soundOn();               // some browsers allow it straight away
+      ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, onGesture, true); });
     }
     snd.btn.addEventListener('click', function () {
+      snd.gestured = true;                 // pressing it IS the user gesture
       snd.muted = !snd.muted;
       try { localStorage.setItem('hcc_sound', snd.muted ? 'off' : 'on'); } catch (e) {}
       paintSound();
