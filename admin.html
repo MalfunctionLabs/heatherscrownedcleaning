@@ -1,4 +1,8 @@
-<!-- HCC admin — v15 — carries the Spring Fresh Start Clean rename and its
+<!-- HCC admin — v16 — DESKTOP PASS on the Pricing tab: services collapse with
+     their typical price in the header, a jump bar replaces scrolling, the six
+     room boxes sit on one row on a wide screen, and the column widens past
+     phone width. UserSubmit: "scrolling for 30 minutes to find a price sucks."
+     Otherwise v15, which carried the Spring Fresh Start Clean rename and its
      repricing to 15% above deep. Otherwise v14, which added "Discount for everything" above the services, and
      each service preview now says which discount it is using and where it came
      from. Otherwise v13, which made discounts a percent plus a reason, per service,
@@ -10,7 +14,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.15 — the 12 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.16 — the 16 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -158,6 +162,41 @@
     .p-example { margin-top: 12px; font-size: 12px; color: var(--muted); }
     .p-example b { color: var(--ivory); }
     @media (max-width: 480px) { .p-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* v16: DESKTOP. The admin was built phone-first and stayed a 640px column
+       on a 27-inch monitor, which made finding one price a scrolling exercise
+       through eight stacked services. Three fixes, all of them widening rather
+       than redesigning:
+         - the column grows on a wide screen instead of staying phone-width
+         - the six room boxes sit on ONE row instead of wrapping onto two
+         - each service collapses, with its price in the header, so the prices
+           can be READ without opening anything */
+    @media (min-width: 900px) {
+      body.is-wide .wrap { max-width: 1080px; }
+      body.is-wide .p-grid { grid-template-columns: repeat(6, 1fr); }
+      body.is-wide #view-pricing .p-svc { padding: 0 18px 18px; }
+    }
+
+    .p-det > summary {
+      list-style: none; cursor: pointer; padding: 14px 2px;
+      display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+    }
+    .p-det > summary::-webkit-details-marker { display: none; }
+    .p-det > summary::before {
+      content: '+'; width: 16px; flex: 0 0 16px; color: var(--taupe);
+      font-weight: 800; font-size: 15px; line-height: 1;
+    }
+    .p-det[open] > summary::before { content: '\2212'; }
+    .p-det > summary .s-name { font-weight: 700; font-size: 15px; }
+    .p-det > summary .s-price { font-weight: 800; font-size: 15px; margin-left: auto; white-space: nowrap; }
+    .p-det > summary .s-was { color: var(--muted); text-decoration: line-through; font-weight: 400; margin-right: 6px; }
+    .p-det > summary .s-deal { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--taupe); }
+    .p-det > summary:hover .s-name { color: var(--taupe); }
+    .p-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+    .p-jump button { padding: 6px 11px; font-size: 12px; font-weight: 700; background: none; border: 1px solid rgba(156,139,118,.4); border-radius: 7px; color: var(--muted); }
+    .p-jump button:hover { color: var(--taupe); border-color: var(--taupe); }
+    .p-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+    .p-toolbar .btn { margin-top: 0; padding: 7px 12px; font-size: 12px; }
 
     /* v5: printable quote sheet. On screen it previews as paper; when
        printing, only the sheet prints. */
@@ -598,6 +637,12 @@
       }
     });
 
+    /* A class rather than a media query alone, so the wide layout applies to
+       the admin panels and never to the print stylesheet. */
+    function syncWide() { document.body.classList.toggle('is-wide', window.innerWidth >= 900); }
+    syncWide();
+    window.addEventListener('resize', syncWide);
+
     function showTab(which) {
       ['gallery', 'pricing', 'sheet', 'reviews', 'quotes'].forEach(function (k) {
         $('view-' + k).hidden = (which !== k);
@@ -690,6 +735,28 @@
       return 'Customers will see: ' + d.pct + '% off' + (d.why ? ' — ' + d.why : '') + '  (from ' + d.from + ')';
     }
 
+    var P_TYPICAL = { bedroom: 3, bathroom: 2, kitchen: 1, dining: 1, living: 1, other: 0 };
+    /* What a 3-bed, 2-bath home costs for this service. Shown in the collapsed
+       header so a price can be found by reading rather than by opening. */
+    function typicalPrice(key) {
+      var sv = pricing.services[key]; if (!sv) return null;
+      if (sv.perSqFt !== undefined) return null;
+      var full = 0;
+      pricing.rooms.forEach(function (r) { full += (P_TYPICAL[r[0]] || 0) * ((sv.rates && sv.rates[r[0]]) || 0); });
+      var pct = dealFor(key).pct;
+      return { full: full, net: pct ? full * (1 - pct / 100) : full, pct: pct };
+    }
+    function summaryHtml(key, sv) {
+      var t = typicalPrice(key), d = dealFor(key);
+      var price = t
+        ? (t.pct ? '<span class="s-was">' + money(t.full) + '</span>' + money(t.net) : money(t.full))
+        : (sv.perSqFt !== undefined ? money(sv.perSqFt) + ' / sq ft' : '');
+      return '<span class="s-name">' + esc(sv.name) + '</span>' +
+             (d.pct ? '<span class="s-deal">' + d.pct + '% off</span>' : '') +
+             '<span class="s-price">' + price + '</span>';
+    }
+
+    var pOpen = {};
     function pricingRender() {
       var host = $('p-services'); host.innerHTML = '';
 
@@ -705,10 +772,23 @@
         '<p class="p-sub" data-badge="__all__"></p>';
       host.appendChild(gbox);
 
+      /* jump bar: eight buttons beat eight screens of scrolling */
+      var jump = document.createElement('div');
+      jump.className = 'p-jump';
+      jump.innerHTML = pricing.order.map(function (k) {
+        var sv = pricing.services[k];
+        return sv ? '<button type="button" data-jump="' + k + '">' + esc(sv.name) + '</button>' : '';
+      }).join('') + '<button type="button" data-jump="__open__">Open all</button>' +
+                   '<button type="button" data-jump="__shut__">Close all</button>';
+      host.appendChild(jump);
+
       pricing.order.forEach(function (key) {
         var s = pricing.services[key]; if (!s) return;
-        var box = document.createElement('div'); box.className = 'p-svc';
-        var html = '<h3>' + esc(s.name) + '</h3>';
+        var box = document.createElement('details');
+        box.className = 'p-svc p-det';
+        box.setAttribute('data-svc', key);
+        if (pOpen[key]) box.open = true;
+        var html = '<summary>' + summaryHtml(key, s) + '</summary>';
         if (s.perSqFt !== undefined) {
           html += '<div class="p-grid"><div><label>Price per sq ft ($)</label><input class="p-field" type="number" min="0" step="0.01" inputmode="decimal" data-key="' + key + '" data-field="perSqFt" value="' + s.perSqFt + '" /></div>' +
                   '<div><label>Minutes per sq ft</label><input class="p-field" type="number" min="0" step="0.01" inputmode="decimal" data-key="' + key + '" data-field="minutesPerSqFt" value="' + (s.minutesPerSqFt || 0) + '" /></div></div>';
@@ -761,6 +841,8 @@
       pricing.order.forEach(function (k) {
         var el = $('p-services').querySelector('[data-badge="' + k + '"]'); if (!el) return;
         el.textContent = dealText(k);
+        var det = $('p-services').querySelector('details[data-svc="' + k + '"] > summary');
+        if (det && pricing.services[k]) det.innerHTML = summaryHtml(k, pricing.services[k]);
       });
       var s = pricing.services.deep, r = s.rates, sum = 3 * r.bedroom + 2 * r.bathroom + r.kitchen + r.dining + r.living;
       var d = dealFor('deep').pct;
@@ -768,6 +850,28 @@
       $('p-example').innerHTML = 'Example: a 3-bed, 2-bath home with kitchen, dining and living room, deep clean = <b>' + money(net) + '</b>' +
         (net !== sum ? ' <span style="opacity:.7">(' + money(sum) + ' less ' + d + '%)</span>' : '') + '.';
     }
+    $('p-services').addEventListener('toggle', function (e) {
+      var d = e.target.closest('details[data-svc]'); if (!d) return;
+      pOpen[d.getAttribute('data-svc')] = d.open;
+    }, true);
+
+    $('p-services').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-jump]'); if (!b) return;
+      e.preventDefault();
+      var k = b.getAttribute('data-jump');
+      var all = $('p-services').querySelectorAll('details[data-svc]');
+      if (k === '__open__' || k === '__shut__') {
+        var want = (k === '__open__');
+        all.forEach(function (d) { d.open = want; pOpen[d.getAttribute('data-svc')] = want; });
+        return;
+      }
+      all.forEach(function (d) {
+        var mine = d.getAttribute('data-svc') === k;
+        d.open = mine; pOpen[d.getAttribute('data-svc')] = mine;
+        if (mine) d.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+
     $('pricing-form').addEventListener('input', pricingExample);
 
     function mergePricing(saved) {
