@@ -1,8 +1,11 @@
-<!-- HCC admin — v11 — adds the QUOTES tab: every quote sent from the website,
+<!-- HCC admin — v12 — adds "Load the built-in prices", the only way to pull a
+     corrected code-side price/time table into a project that already has a
+     saved sheet. It fills the form only; nothing is live until Save. Also
+     carries the $30/hr time rebuild. Otherwise v11, which added the QUOTES tab: every quote sent from the website,
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev43.11 — the 11 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev45.12 — the 12 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -295,6 +298,7 @@
           <p class="p-example" id="p-example"></p>
           <button class="btn" type="submit" id="p-save">Save prices</button>
           <button class="btn btn-quiet" type="button" id="p-reset" style="margin-left:8px;">Back to the last saved</button>
+          <button class="btn btn-quiet" type="button" id="p-defaults" style="margin-left:8px;">Load the built-in prices</button>
           <p class="status" id="p-status"></p>
         </form>
       </div>
@@ -387,32 +391,32 @@
       services: {
         weekly:   { name: "Weekly Clean",    short: "Every week",
                     rates: { bedroom: 18, bathroom: 24, kitchen: 27, dining: 12, living: 15, other: 10 },
-                    minutes: { bedroom: 15, bathroom: 20, kitchen: 25, dining: 10, living: 15, other: 10 },
+                    minutes: { bedroom: 35, bathroom: 46, kitchen: 58, dining: 23, living: 35, other: 23 },
                     promo: "15% off \u2014 through 2026",
                     description: "Routine upkeep visit every week \u2014 kitchens, bathrooms, floors, dusting, and trash, keeping the home consistently tidy." },
         biweekly: { name: "Bi-Weekly Clean", short: "Every other week",
                     rates: { bedroom: 20, bathroom: 26, kitchen: 29, dining: 13, living: 16, other: 11 },
-                    minutes: { bedroom: 18, bathroom: 22, kitchen: 28, dining: 11, living: 16, other: 11 },
+                    minutes: { bedroom: 40, bathroom: 49, kitchen: 62, dining: 24, living: 36, other: 24 },
                     promo: "15% off \u2014 through 2026",
                     description: "Routine clean every two weeks \u2014 same coverage as the weekly clean, with a bit more buildup to address each visit." },
         monthly:  { name: "Monthly Clean",   short: "Once a month",
                     rates: { bedroom: 22, bathroom: 29, kitchen: 33, dining: 14, living: 18, other: 12 },
-                    minutes: { bedroom: 20, bathroom: 25, kitchen: 30, dining: 12, living: 18, other: 12 },
+                    minutes: { bedroom: 44, bathroom: 56, kitchen: 67, dining: 27, living: 40, other: 27 },
                     promo: "15% off \u2014 through 2026",
                     description: "Once-a-month refresh \u2014 full standard clean plus extra attention to areas that accumulate buildup between visits." },
         deep:     { name: "Deep Clean",      short: "Top to bottom",
                     rates: { bedroom: 32, bathroom: 45, kitchen: 50, dining: 20, living: 25, other: 16 },
-                    minutes: { bedroom: 35, bathroom: 45, kitchen: 50, dining: 20, living: 30, other: 20 },
+                    minutes: { bedroom: 67, bathroom: 86, kitchen: 95, dining: 38, living: 57, other: 38 },
                     promo: "15% off \u2014 through 2026",
                     description: "Thorough top-to-bottom clean \u2014 baseboards, inside appliances, behind and under furniture, and detailed scrubbing beyond a routine visit." },
         movein:   { name: "Move-In Clean",   short: "Before you unpack",
                     rates: { bedroom: 32, bathroom: 45, kitchen: 48, dining: 20, living: 24, other: 15 },
-                    minutes: { bedroom: 30, bathroom: 40, kitchen: 45, dining: 18, living: 25, other: 18 },
+                    minutes: { bedroom: 65, bathroom: 86, kitchen: 97, dining: 39, living: 54, other: 39 },
                     promo: "15% off \u2014 through 2026",
                     description: "Deep clean of an empty home before belongings arrive \u2014 same thorough coverage as a move-out clean, so everything is sanitized and fresh on day one." },
         moveout:  { name: "Move-Out Clean",  short: "Ready for the walkthrough",
                     rates: { bedroom: 34, bathroom: 48, kitchen: 52, dining: 21, living: 27, other: 17 },
-                    minutes: { bedroom: 32, bathroom: 42, kitchen: 48, dining: 19, living: 27, other: 19 },
+                    minutes: { bedroom: 70, bathroom: 91, kitchen: 104, dining: 41, living: 59, other: 41 },
                     promo: "15% off \u2014 through 2026",
                     description: "Deep clean of an emptied home for landlord inspection or the next tenant \u2014 inside cabinets and appliances, baseboards, closets, and all rooms top to bottom." },
         construction: { name: "Construction Clean", short: "Priced by square foot",
@@ -421,7 +425,7 @@
                     description: "Post-renovation cleanup \u2014 clears dust and debris, wipes down all surfaces, cleans windows, fixtures, and vents, and detail-cleans floors." },
         spring:   { name: "Spring Clean", short: "Seasonal top-to-bottom clean",
                     rates: { bedroom: 19, bathroom: 27, kitchen: 30, dining: 12, living: 15, other: 10 },
-                    minutes: { bedroom: 35, bathroom: 45, kitchen: 50, dining: 20, living: 30, other: 20 },
+                    minutes: { bedroom: 40, bathroom: 51, kitchen: 57, dining: 23, living: 34, other: 23 },
                     promo: "",
                     description: "Our full deep clean at the seasonal rate \u2014 the same top-to-bottom detail as a standard deep clean. Becoming a repeat client offers additional discounts." }
       }
@@ -729,6 +733,14 @@
           pricingSaved = JSON.parse(JSON.stringify(pricing));
           status('p-status', 'Saved. The Quote page uses these prices now.', 'ok');
         });
+    });
+    /* v12: the saved sheet overrides everything in the code, so once a sheet
+       exists there was no way to pull in a corrected built-in table. This does
+       that. It only fills the form — nothing reaches the site until Save. */
+    $('p-defaults').addEventListener('click', function () {
+      pricing = JSON.parse(JSON.stringify(PRICE_DEFAULTS));
+      pricingRender();
+      status('p-status', 'Loaded the built-in prices and times. Nothing is live until you press Save prices.');
     });
     $('p-reset').addEventListener('click', function () { pricing = pricingSaved ? JSON.parse(JSON.stringify(pricingSaved)) : JSON.parse(JSON.stringify(PRICE_DEFAULTS)); pricingRender(); status('p-status', pricingSaved ? 'Back to the last saved prices.' : 'Back to the starting prices.'); });
     pricingRender();
