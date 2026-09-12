@@ -1,4 +1,5 @@
-<!-- HCC admin — v27 — every Save now keeps a copy of the sheet it replaced,
+<!-- HCC admin — v28 — passes the stamp URL to the printable customer quote;
+     see quote-doc.js v3. Otherwise v27, where every Save began keeping a copy of the sheet it replaced,
      five deep, restorable from a dropdown in the Pricing toolbar. Otherwise
      v26, which did two things. Photos can be ROTATED 90 degrees after
      upload, because phone photos arrive sideways. And a saved price sheet no
@@ -45,7 +46,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev51.27 — the 27 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev52.28 — the 28 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -548,7 +549,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev51.27</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev52.28</span>
     </div>
   </div>
 
@@ -770,6 +771,9 @@
         lineItems: Array.isArray(r.line_items) ? r.line_items : [],
         totalText: r.total_display,
         timeEstimate: r.time_estimate,
+        /* absolute: the sheet opens in a blank window, where a relative path
+           has no base to resolve against */
+        stampSrc: new URL('ml-stamp-emblem-150.png', location.href).href,
         logoSrc: SHEET_LOGO
       };
     }
