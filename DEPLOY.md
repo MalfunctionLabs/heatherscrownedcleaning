@@ -16,7 +16,7 @@ served by GitHub Pages from this repo as of 2026-09-11.
 **LAUNCH HAPPENED 2026-09-11. OWNERSHIP HAS MOVED.**
 
 - **WEBHCC.0** is sole owner of HCC web services. **This runbook is
-  yours. Run it.** It came online 2026-09-12.
+  yours. Run it.** It came online 2026-09-11.
 - **WEB.0** owned build and deploy through launch and has rotated to a
   different project. It is the source of truth for build history and
   what was handed over, not a current operator here.
@@ -173,15 +173,18 @@ locked-down network.
 needing a backend must be a browser-side call to a third-party service.
 Supabase and Web3Forms both fit that shape and work fine here.
 
-**Keys in a public repo are public.** If this repo is public and v30
-embeds a Supabase anon key or a Web3Forms access key, those are readable
-by anyone the moment you push. Both services are designed for that, but
-the Supabase anon key is only safe if row-level security is actually
-configured. Confirm that with UserSubmit before shipping it, not after.
+**Keys in a public repo are public.** As of v40 the repo contains no key
+of any kind — both blocks are inert until UserSubmit supplies them,
+verified by WEBHCC.0 across all reachable history, not just the checkout.
+When they do go in, they are readable by anyone the moment you push. Both
+services are designed for that, but the Supabase anon key is only safe if
+row-level security is actually configured, and the service_role key must
+never enter this repo at all. Removing a committed key later does not
+unpublish it, because the commit stays reachable.
 
 **Browsers block autoplay.** Audio cannot start on page load. It needs a
-control the visitor clicks. Relevant to the looping-audio research
-UserSubmit assigned to Audio.0, which forwards to WEB.0.
+control the visitor clicks. v40 ships `ambient-loop.ogg` and starts it on
+first tap by design, which is why it works.
 
 **Ship assets as files, not base64.** Inlining audio or large images
 bloats the page for every visitor whether they use it or not. Put them in
