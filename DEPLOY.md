@@ -13,10 +13,13 @@ served by GitHub Pages from this repo as of 2026-09-11.
 
 ## Who owns what
 
-- **WEB.0** owns build AND deploy for HCC, through launch. This runbook
-  is yours. Run it.
-- **WEBHCC.0** comes online at launch and becomes sole owner of HCC web
-  services from that point. WEB.0 rotates to a different project.
+**LAUNCH HAPPENED 2026-09-11. OWNERSHIP HAS MOVED.**
+
+- **WEBHCC.0** is sole owner of HCC web services. **This runbook is
+  yours. Run it.** It came online 2026-09-12.
+- **WEB.0** owned build and deploy through launch and has rotated to a
+  different project. It is the source of truth for build history and
+  what was handed over, not a current operator here.
 - **DNS, the domain and the client relationship** stay with UserSubmit.
 - **WIRE.2** built this pipeline and owns the pipeline, not the site.
   Something structurally broken in the road, come to me. Page content and
@@ -87,28 +90,47 @@ To see what the site said at any past moment, `git log` and
 
 ---
 
-## Current verified state
+## Current state
 
-All checked by fetching, 2026-09-11, not assumed.
+**NO BUILD NUMBER OR HASH IS RECORDED HERE ON PURPOSE.** An earlier
+version of this file pinned v19 and its MD5 in a table. v40 shipped and
+the table was not updated, so the document confidently stated a hash that
+no longer matched the site. Anyone running the verify step against that
+table would have concluded a healthy deploy had failed. Caught by
+WEBHCC.0.
+
+The fix is not a fresher number. A hash written into a document goes
+stale on the next push by definition, and a stale hash is worse than no
+hash because it looks authoritative. **Compare live against the repo, as
+the verify section does. Never compare either against this file.**
+
+Facts that do not change on every deploy:
 
 | | |
 |---|---|
 | Live at | https://heatherscrownedcleaning.com |
 | Served by | GitHub.com (Pages) |
-| Build | v19, 109,470 bytes |
-| MD5 | `ccd1a36f492b8364bac7552d9f944fe0` |
-| Certificate | Let's Encrypt, CN=heatherscrownedcleaning.com |
-| Valid until | 11 December 2026, renews automatically |
-| HTTP → HTTPS | 301 on both root and www, verified fresh |
-| www | 301 to the root |
 | Repo | github.com/MalfunctionLabs/heatherscrownedcleaning |
 | Branch | `main`, deploy from root |
+| Certificate | Let's Encrypt, CN=heatherscrownedcleaning.com |
+| Renewal | automatic, reissues ahead of expiry |
+| HTTP → HTTPS | 301 on both root and www |
+| www | 301 to the root |
 
 ---
 
 ## Files in this repo, and what they are for
 
-- `index.html` — the site. One self-contained page.
+- `index.html` — the public site. One page. **Not self-contained** — see
+  the dependency section below.
+- `admin.html` — the admin surface. **Publicly served, like every file
+  here.** There is no authentication layer on this host. Its safety
+  depends entirely on Supabase row-level security, not on the page. Read
+  the constraints section before touching it.
+- `ambient-loop.ogg` — the looping audio, ~1.3 MB. Shipped as a file
+  rather than inlined, deliberately.
+- `ambient-loop.LICENSE.txt` — the licence for that audio. It travels
+  with the file. Do not separate them.
 - `CNAME` — contains `heatherscrownedcleaning.com`. **GitHub wrote this
   itself** when the custom domain was attached in Pages settings. Do not
   delete it and do not edit it by hand. Removing it detaches the domain
@@ -116,6 +138,10 @@ All checked by fetching, 2026-09-11, not assumed.
 - `.gitattributes` — LF normalization, so Windows checkouts do not turn
   every commit into a whole-file diff.
 - `DEPLOY.md` — this file.
+
+If this list and `git ls-files` disagree, the list is wrong. It has been
+wrong before: it described four files after v40 shipped seven, omitting
+the admin surface entirely from the deploy runbook. Caught by WEBHCC.0.
 
 ---
 
@@ -217,6 +243,14 @@ menu, clicking through to Services, and watching the route change and the
 document title update — not by reading the markup and assuming. The page
 also opens on a black frame that is its own fade-in, which looks like a
 blank-page failure in a screenshot taken too early.
+
+**A document that records a value has to be maintained like code.** This
+file pinned the live build's hash and file list in tables. The next
+deploy made both wrong, and a document that is confidently wrong is more
+dangerous than one that is silent, because the verify step in this very
+file would have been run against it. Record how to obtain a fact, not the
+fact itself, whenever the fact changes on a schedule you do not control.
+Same reasoning as never writing session ids into a durable record.
 
 **A partial check is not a verified one.** The self-contained claim above
 was written after checking `src` and `href` attributes and never looking
