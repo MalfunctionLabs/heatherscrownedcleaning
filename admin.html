@@ -1,0 +1,807 @@
+<!-- HCC admin — v8 — email updated to getcrowned@; otherwise v7: adds REVIEWS (text and/or screenshot, stars, source; add / edit / show-hide / delete); otherwise v6: spring clean default renamed (no deal badge), otherwise v5: gallery (before / after pairs, show / hide), PRICING (Heather edits the rates the Quote page uses), and QUOTE SHEET: a printable blank quote, laid out like the one customers email in, with the rate and total columns empty so Heather can price by hand, plus the current rate card on a second page. Heather drops or picks a BEFORE photo and an AFTER photo, taps either preview to look closer, writes a description, and Publish puts the pair on the Gallery page. Ships with index.html as admin.html. Needs the same two Supabase values as index.html and the v4 setup SQL. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#1E1C1B" />
+  <title>Admin — Heather's Crowned Cleaning</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Playfair+Display:ital@1&display=swap');
+    :root { --charcoal:#131110; --ivory:#F8F5EF; --blush:#8B6F68; --taupe:#9C8B76; --muted:#9A958D; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; min-height: 100%; }
+    body { font-family: Archivo, system-ui, sans-serif; background: var(--charcoal); color: var(--ivory); }
+    a { color: inherit; }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 28px 6vw 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; text-decoration: none; margin-bottom: 34px; }
+    .brand span { color: var(--muted); font-weight: 500; }
+    h1 { font-size: clamp(24px, 5vw, 32px); font-weight: 800; letter-spacing: -.02em; margin: 0 0 6px; }
+    .sub { margin: 0 0 26px; font-family: 'Playfair Display', serif; font-style: italic; color: var(--muted); font-size: 15px; }
+    label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--muted); margin: 18px 0 6px; }
+    input[type=email], input[type=password], textarea {
+      width: 100%; padding: 12px 14px; font: inherit; font-size: 16px; color: var(--ivory);
+      background: rgba(248,245,239,.04); border: 1px solid rgba(156,139,118,.35); border-radius: 8px;
+    }
+    input:focus, textarea:focus { outline: none; border-color: var(--taupe); }
+    textarea { min-height: 96px; resize: vertical; line-height: 1.5; }
+    .hint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+    button { font: inherit; cursor: pointer; }
+    .btn { display: inline-block; margin-top: 20px; padding: 12px 22px; font-size: 14px; font-weight: 700; color: var(--charcoal); background: var(--ivory); border: 0; border-radius: 8px; }
+    .btn:hover { background: #fff; }
+    .btn[disabled] { opacity: .5; cursor: default; }
+    .btn-quiet { background: none; color: var(--ivory); border: 1px solid rgba(156,139,118,.5); }
+    .btn-quiet:hover { background: none; border-color: var(--taupe); color: var(--taupe); }
+    .status { margin: 16px 0 0; font-size: 13px; color: var(--muted); min-height: 1.2em; }
+    .status.err { color: #d9a6a0; }
+    .status.ok { color: #b7c9a8; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .topbar .who { font-size: 12px; color: var(--muted); }
+
+    /* the two drop targets */
+    .pair-in { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+    .drop {
+      position: relative; aspect-ratio: 1 / 1; border: 1px dashed rgba(156,139,118,.5); border-radius: 10px;
+      background: rgba(248,245,239,.03); overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 14px; color: var(--muted); font-size: 13px; line-height: 1.4;
+    }
+    .drop.over { border-color: var(--taupe); border-style: solid; background: rgba(156,139,118,.08); }
+    .drop input { display: none; }
+    .drop .tag { position: absolute; top: 8px; left: 8px; padding: 3px 7px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ivory); background: rgba(19,17,16,.6); border-radius: 4px; z-index: 2; }
+    .drop strong { color: var(--ivory); display: block; margin-bottom: 4px; }
+    .drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+    .drop.has img { display: block; }
+    .drop.has .empty { display: none; }
+    .drop .look { position: absolute; right: 8px; bottom: 8px; z-index: 2; padding: 5px 9px; font-size: 11px; font-weight: 600; color: var(--ivory); background: rgba(19,17,16,.7); border: 0; border-radius: 6px; display: none; }
+    .drop.has .look { display: block; }
+    .drop .clear { position: absolute; right: 8px; top: 8px; z-index: 2; width: 26px; height: 26px; font-size: 16px; line-height: 1; color: var(--ivory); background: rgba(19,17,16,.7); border: 0; border-radius: 6px; display: none; }
+    .drop.has .clear { display: block; }
+
+    hr.rule { width: 40px; height: 2px; background: var(--taupe); border: 0; margin: 40px 0 22px; }
+    h2 { font-size: 18px; font-weight: 700; margin: 0 0 14px; }
+    .list { display: grid; gap: 12px; }
+    .item { margin: 0; border: 1px solid rgba(156,139,118,.25); border-radius: 10px; overflow: hidden; background: rgba(248,245,239,.03); }
+    .item .pics { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+    .item .pics div { position: relative; aspect-ratio: 1 / 1; }
+    .item .pics img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+    .item .pics .tag { position: absolute; top: 6px; left: 6px; padding: 2px 6px; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ivory); background: rgba(19,17,16,.6); border-radius: 4px; }
+    .item figcaption { padding: 10px 12px; font-family: 'Playfair Display', serif; font-style: italic; font-size: 14px; color: var(--ivory); line-height: 1.4; }
+    .item figcaption time { display: block; margin-top: 4px; font-family: Archivo, system-ui, sans-serif; font-style: normal; font-size: 11px; letter-spacing: .06em; color: var(--taupe); }
+    .item.is-hidden .pics { opacity: .38; }
+    .item .state { position: absolute; top: 6px; right: 6px; z-index: 2; padding: 2px 7px; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-radius: 4px; color: var(--charcoal); background: #b7c9a8; }
+    .item.is-hidden .state { color: var(--ivory); background: rgba(19,17,16,.75); border: 1px solid rgba(156,139,118,.5); }
+    .item .pics { position: relative; }
+    .item .actions { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(156,139,118,.25); }
+    .item .actions button { display: block; width: 100%; padding: 10px; font-size: 12px; font-weight: 600; background: none; border: 0; color: var(--ivory); }
+    .item .actions button + button { border-left: 1px solid rgba(156,139,118,.25); color: var(--muted); }
+    .item .actions button:hover { color: var(--taupe); }
+    .item .actions button + button:hover { color: #d9a6a0; }
+    .item .actions button[disabled] { opacity: .5; }
+    .check { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 13px; color: var(--ivory); cursor: pointer; }
+    .check input { width: 18px; height: 18px; accent-color: var(--taupe); }
+
+    /* look-closer view */
+    .zoom { position: fixed; inset: 0; z-index: 9; background: rgba(19,17,16,.96); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5vh 5vw; }
+    .zoom img { max-width: 100%; max-height: 80vh; border-radius: 8px; }
+    .zoom p { margin: 12px 0 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--taupe); }
+    .zoom-close { position: absolute; top: 18px; right: 5vw; width: 40px; height: 40px; background: none; border: 0; color: var(--ivory); font-size: 30px; line-height: 1; }
+    .foot { margin-top: 50px; font-size: 11px; letter-spacing: .04em; color: rgba(248,245,239,.4); }
+    .rv { margin: 0; border: 1px solid rgba(156,139,118,.25); border-radius: 10px; overflow: hidden; background: rgba(248,245,239,.03); position: relative; }
+    .rv.is-hidden .rv-main { opacity: .45; }
+    .rv .rv-main { padding: 12px 12px 10px; }
+    .rv .rv-stars { color: var(--taupe); letter-spacing: .12em; font-size: 13px; margin: 0 0 6px; }
+    .rv .rv-body { margin: 0; font-family: 'Playfair Display', serif; font-style: italic; font-size: 14px; line-height: 1.5; color: var(--ivory); white-space: pre-wrap; }
+    .rv .rv-who { margin: 8px 0 0; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--taupe); }
+    .rv img { display: block; width: 100%; max-height: 260px; object-fit: contain; object-position: left top; background: #1a1816; cursor: zoom-in; }
+    .rv .state { position: absolute; top: 8px; right: 8px; z-index: 2; padding: 2px 7px; font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-radius: 4px; color: var(--charcoal); background: #b7c9a8; }
+    .rv.is-hidden .state { color: var(--ivory); background: rgba(19,17,16,.75); border: 1px solid rgba(156,139,118,.5); }
+    .rv .actions { display: grid; grid-template-columns: 1fr 1fr 1fr; border-top: 1px solid rgba(156,139,118,.25); }
+    .rv .actions button { padding: 10px; font-size: 12px; font-weight: 600; background: none; border: 0; color: var(--ivory); }
+    .rv .actions button + button { border-left: 1px solid rgba(156,139,118,.25); }
+    .rv .actions button:last-child { color: var(--muted); }
+    .rv .actions button:hover { color: var(--taupe); }
+    .rv .actions button:last-child:hover { color: #d9a6a0; }
+    .rv .edit { padding: 10px 12px 12px; border-top: 1px solid rgba(156,139,118,.25); display: grid; gap: 8px; }
+    .rv .edit input, .rv .edit textarea, .rv .edit select { width: 100%; padding: 9px 10px; font: inherit; font-size: 14px; color: var(--ivory); background: rgba(248,245,239,.04); border: 1px solid rgba(156,139,118,.35); border-radius: 6px; }
+    .rv .edit textarea { min-height: 80px; resize: vertical; }
+    .rv .edit .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 26px; }
+    .tabs button { padding: 9px 16px; font-size: 13px; font-weight: 700; background: none; border: 1px solid rgba(156,139,118,.4); border-radius: 8px; color: var(--muted); }
+    .tabs button.on { color: var(--charcoal); background: var(--ivory); border-color: var(--ivory); }
+    .p-svc { border: 1px solid rgba(156,139,118,.25); border-radius: 10px; padding: 14px 14px 16px; margin-top: 12px; background: rgba(248,245,239,.02); }
+    .p-svc h3 { margin: 0 0 10px; font-size: 15px; }
+    .p-sub { margin: 12px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    .p-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .p-grid label { margin: 0 0 4px; font-size: 11px; }
+    .p-field { width: 100%; padding: 9px 10px; font: inherit; font-size: 15px; color: var(--ivory); background: rgba(248,245,239,.04); border: 1px solid rgba(156,139,118,.35); border-radius: 6px; }
+    .p-field:focus { outline: none; border-color: var(--taupe); }
+    textarea.p-field { font-size: 14px; min-height: 64px; resize: vertical; line-height: 1.45; }
+    .p-example { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    .p-example b { color: var(--ivory); }
+    @media (max-width: 480px) { .p-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    /* v5: printable quote sheet. On screen it previews as paper; when
+       printing, only the sheet prints. */
+    .sheet-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
+    .sheet-tools .check { margin-top: 0; }
+    .paper {
+      background: #fff; color: #1a1816; border-radius: 4px; padding: 34px 38px; margin-top: 8px;
+      box-shadow: 0 2px 14px rgba(0,0,0,.35); font-family: Archivo, system-ui, sans-serif; font-size: 12px; line-height: 1.4;
+    }
+    .paper * { color: inherit; }
+    .paper .ph { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid #1a1816; padding-bottom: 12px; }
+    .paper .ph img { width: 44px; height: 44px; object-fit: contain; }
+    .paper .ph .biz { display: flex; gap: 12px; align-items: center; }
+    .paper .ph .biz b { display: block; font-size: 16px; letter-spacing: -.01em; }
+    .paper .ph .biz span { display: block; font-size: 10px; color: #555; margin-top: 2px; }
+    .paper .ph .qt { text-align: right; }
+    .paper .ph .qt b { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+    .paper .ph .qt span { display: block; font-size: 11px; margin-top: 6px; }
+    .paper .line { display: inline-block; border-bottom: 1px solid #1a1816; min-width: 130px; height: 14px; vertical-align: bottom; }
+    .paper h4 { margin: 18px 0 8px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #555; }
+    .paper .cust { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+    .paper .cust div { display: flex; gap: 8px; align-items: flex-end; }
+    .paper .cust div span:first-child { white-space: nowrap; }
+    .paper .cust .line { flex: 1; min-width: 0; }
+    .paper .svcs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 10px; }
+    .paper .svcs div { display: flex; align-items: center; gap: 6px; }
+    .paper .box { width: 11px; height: 11px; border: 1.2px solid #1a1816; border-radius: 2px; flex: none; }
+    .paper table { width: 100%; border-collapse: collapse; }
+    .paper th, .paper td { border: 1px solid #1a1816; padding: 7px 8px; text-align: left; }
+    .paper th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; background: #f2efe9; }
+    .paper td.n { text-align: right; width: 22%; }
+    .paper td.num { width: 14%; }
+    .paper tr.tot td { font-weight: 800; font-size: 14px; }
+    .paper .notes { border: 1px solid #1a1816; height: 74px; border-radius: 2px; }
+    .paper .fine { margin: 14px 0 0; font-size: 9.5px; color: #555; line-height: 1.45; }
+    .paper .sig { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 22px; }
+    .paper .sig div { display: flex; gap: 8px; align-items: flex-end; }
+    .paper .sig .line { flex: 1; }
+    .paper .pf { margin-top: 20px; padding-top: 8px; border-top: 1px solid #1a1816; font-size: 9.5px; color: #555; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .paper .card th:first-child, .paper .card td:first-child { text-align: left; }
+    .paper .card td { text-align: right; padding: 5px 7px; font-size: 11px; }
+    .paper .card td:first-child { text-align: left; font-weight: 600; }
+    .paper .card tr.badge td { font-weight: 400; font-size: 9.5px; color: #555; border-top: 0; }
+    .pagebreak { page-break-before: always; break-before: page; margin-top: 24px; }
+    @media (max-width: 600px) { .paper { padding: 20px 16px; } .paper .svcs { grid-template-columns: repeat(2, 1fr); } .paper .cust { grid-template-columns: 1fr; } }
+    @media print {
+      body { background: #fff; }
+      .wrap > *:not(#panel-upload), .topbar, .tabs, #view-gallery, #view-pricing, .sheet-tools, .foot, #zoom { display: none !important; }
+      #view-sheet { display: block !important; }
+      .paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0; font-size: 12px; }
+      .pagebreak { margin-top: 0; }
+      @page { margin: 16mm; }
+    }
+    @media (max-width: 480px) { .pair-in { gap: 8px; } .drop { font-size: 12px; padding: 10px; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="brand" href="./">Heather's Crowned Cleaning <span>&middot; admin</span></a>
+
+    <section id="panel-config" hidden>
+      <h1>Not connected yet.</h1>
+      <p class="sub">This page needs the two Supabase values filled in at the top of its script. Nothing works until then.</p>
+    </section>
+
+    <section id="panel-login" hidden>
+      <h1>Sign in.</h1>
+      <p class="sub">Only Heather and Malfunction Labs have accounts here.</p>
+      <form id="login-form">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required />
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+        <button class="btn" type="submit" id="login-btn">Sign in</button>
+        <p class="status" id="login-status"></p>
+      </form>
+    </section>
+
+    <section id="panel-upload" hidden>
+      <div class="topbar">
+        <span class="who" id="who"></span>
+        <button class="btn btn-quiet" type="button" id="signout" style="margin-top:0;padding:8px 14px;">Sign out</button>
+      </div>
+      <div class="tabs" role="tablist">
+        <button type="button" class="on" id="tab-gallery" role="tab" aria-selected="true">Gallery</button>
+        <button type="button" id="tab-pricing" role="tab" aria-selected="false">Pricing</button>
+        <button type="button" id="tab-sheet" role="tab" aria-selected="false">Quote sheet</button>
+        <button type="button" id="tab-reviews" role="tab" aria-selected="false">Reviews</button>
+      </div>
+
+      <div id="view-gallery">
+      <h1>Add a before and after.</h1>
+      <p class="sub">Both photos, one description. It goes live on the Gallery page the moment you publish.</p>
+
+      <form id="upload-form">
+        <label>Photos</label>
+        <div class="pair-in">
+          <label class="drop" id="drop-before" for="file-before">
+            <span class="tag">Before</span>
+            <input id="file-before" type="file" accept="image/*" />
+            <img id="img-before" alt="" />
+            <span class="empty"><strong>Before</strong>Drop a photo here, or tap to choose.</span>
+            <button type="button" class="look" data-side="before">Look closer</button>
+            <button type="button" class="clear" data-side="before" aria-label="Remove before photo">&times;</button>
+          </label>
+          <label class="drop" id="drop-after" for="file-after">
+            <span class="tag">After</span>
+            <input id="file-after" type="file" accept="image/*" />
+            <img id="img-after" alt="" />
+            <span class="empty"><strong>After</strong>Drop a photo here, or tap to choose.</span>
+            <button type="button" class="look" data-side="after">Look closer</button>
+            <button type="button" class="clear" data-side="after" aria-label="Remove after photo">&times;</button>
+          </label>
+        </div>
+        <p class="hint">Each photo is resized before upload so it loads fast. Tap a preview to look closer.</p>
+
+        <label for="caption">Description</label>
+        <textarea id="caption" spellcheck="true" lang="en" autocapitalize="sentences" maxlength="280" placeholder="What did this room get? A sentence or two."></textarea>
+        <p class="hint">Misspelled words get underlined as you type. Fix them before you publish. 280 characters max.</p>
+
+        <label class="check" for="show-on-publish">
+          <input id="show-on-publish" type="checkbox" checked />
+          Show on the Gallery page right away
+        </label>
+        <p class="hint">Untick to keep it hidden for now. You can show or hide any pair later from the list below.</p>
+
+        <button class="btn" type="submit" id="publish-btn" disabled>Publish</button>
+        <p class="status" id="upload-status"></p>
+      </form>
+
+      <hr class="rule" />
+      <h2>Your pairs</h2>
+      <p class="status" id="list-status">Loading&hellip;</p>
+      <div class="list" id="list"></div>
+      </div>
+
+      <div id="view-pricing" hidden>
+        <h1>Your prices.</h1>
+        <p class="sub">What the Quote page charges. Change anything, save, and the site uses it from that moment.</p>
+        <form id="pricing-form">
+          <div id="p-services"></div>
+          <p class="p-example" id="p-example"></p>
+          <button class="btn" type="submit" id="p-save">Save prices</button>
+          <button class="btn btn-quiet" type="button" id="p-reset" style="margin-left:8px;">Back to the last saved</button>
+          <p class="status" id="p-status"></p>
+        </form>
+      </div>
+
+      <div id="view-sheet" hidden>
+        <h1>Blank quote to print.</h1>
+        <p class="sub">The same layout customers send in from the website, with the price and total columns empty so you can quote by hand.</p>
+        <div class="sheet-tools">
+          <button class="btn" type="button" id="sheet-print" style="margin-top:0;">Print</button>
+          <label class="check" for="sheet-card"><input id="sheet-card" type="checkbox" checked /> Add the current rate card as a second page</label>
+        </div>
+        <div class="paper" id="paper"></div>
+      </div>
+
+      <div id="view-reviews" hidden>
+        <h1>Reviews.</h1>
+        <p class="sub">A screenshot of a post and its comments, a few lines of text, or both. It shows on the Reviews page the moment you publish.</p>
+        <form id="rev-form">
+          <label>Screenshot or photo (optional)</label>
+          <label class="drop" id="drop-rev" for="file-rev" style="aspect-ratio:auto;min-height:150px;">
+            <span class="tag">Image</span>
+            <input id="file-rev" type="file" accept="image/*" />
+            <img id="img-rev" alt="" style="position:static;width:100%;height:auto;max-height:340px;object-fit:contain;" />
+            <span class="empty"><strong>Image</strong>Drop a screenshot here, or tap to choose.</span>
+            <button type="button" class="look" data-side="rev">Look closer</button>
+            <button type="button" class="clear" data-side="rev" aria-label="Remove image">&times;</button>
+          </label>
+          <label for="rev-name">Who said it (optional)</label>
+          <input class="q-input" id="rev-name" type="text" style="width:100%;padding:12px 14px;font:inherit;font-size:16px;color:var(--ivory);background:rgba(248,245,239,.04);border:1px solid rgba(156,139,118,.35);border-radius:8px;" placeholder="e.g. Sarah M., Tremonton" />
+          <label for="rev-body">What they said (optional if there is an image)</label>
+          <textarea id="rev-body" spellcheck="true" lang="en" maxlength="1200" placeholder="Paste or type the review."></textarea>
+          <div class="p-grid" style="margin-top:14px;">
+            <div><label for="rev-rating">Stars</label><select id="rev-rating" class="p-field"><option value="">None</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></div>
+            <div><label for="rev-source">From</label><select id="rev-source" class="p-field"><option value="facebook">Facebook</option><option value="google">Google</option><option value="other">Other</option></select></div>
+          </div>
+          <label class="check" for="rev-show"><input id="rev-show" type="checkbox" checked /> Show on the Reviews page right away</label>
+          <button class="btn" type="submit" id="rev-publish" disabled>Publish review</button>
+          <p class="status" id="rev-status"></p>
+        </form>
+        <hr class="rule" />
+        <h2>Your reviews</h2>
+        <p class="status" id="rev-list-status">Loading&hellip;</p>
+        <div class="list" id="rev-list"></div>
+      </div>
+    </section>
+
+    <p class="foot">Heather's Crowned Cleaning, LLC. &middot; Site by Malfunction Labs&trade;</p>
+  </div>
+
+  <div class="zoom" id="zoom" hidden>
+    <button class="zoom-close" type="button" aria-label="Close">&times;</button>
+    <img id="zoom-img" alt="" />
+    <p id="zoom-label"></p>
+  </div>
+
+  <script>
+    // Same two values as index.html. Anon key is public by design; the
+    // service key must never go here.
+    var HCC_SUPABASE = {
+      url: "",
+      anonKey: "",
+      bucket: "gallery",
+      table: "gallery_pairs",
+      pricingTable: "pricing",
+      reviewsTable: "reviews"
+    };
+    var MAX_EDGE = 1600;
+    var JPEG_Q = 0.85;
+
+    var $ = function (id) { return document.getElementById(id); };
+    var client = null;
+
+    // Seed prices: identical to the fallback block in index.html. Used only
+    // until Heather saves once; after that the saved row is the truth.
+    var HCC_PRICES = {
+      rooms: [
+        ["bedroom", "Bedroom"], ["bathroom", "Bathroom"], ["kitchen", "Kitchen"],
+        ["dining", "Dining room"], ["living", "Living room"], ["other", "Other room"]
+      ],
+      order: ["weekly", "biweekly", "monthly", "deep", "movein", "moveout", "construction", "spring"],
+      services: {
+        weekly:   { name: "Weekly Clean",    short: "Every week",
+                    rates: { bedroom: 18, bathroom: 24, kitchen: 27, dining: 12, living: 15, other: 10 },
+                    minutes: { bedroom: 15, bathroom: 20, kitchen: 25, dining: 10, living: 15, other: 10 },
+                    promo: "15% off \u2014 through 2026",
+                    description: "Routine upkeep visit every week \u2014 kitchens, bathrooms, floors, dusting, and trash, keeping the home consistently tidy." },
+        biweekly: { name: "Bi-Weekly Clean", short: "Every other week",
+                    rates: { bedroom: 20, bathroom: 26, kitchen: 29, dining: 13, living: 16, other: 11 },
+                    minutes: { bedroom: 18, bathroom: 22, kitchen: 28, dining: 11, living: 16, other: 11 },
+                    promo: "15% off \u2014 through 2026",
+                    description: "Routine clean every two weeks \u2014 same coverage as the weekly clean, with a bit more buildup to address each visit." },
+        monthly:  { name: "Monthly Clean",   short: "Once a month",
+                    rates: { bedroom: 22, bathroom: 29, kitchen: 33, dining: 14, living: 18, other: 12 },
+                    minutes: { bedroom: 20, bathroom: 25, kitchen: 30, dining: 12, living: 18, other: 12 },
+                    promo: "15% off \u2014 through 2026",
+                    description: "Once-a-month refresh \u2014 full standard clean plus extra attention to areas that accumulate buildup between visits." },
+        deep:     { name: "Deep Clean",      short: "Top to bottom",
+                    rates: { bedroom: 32, bathroom: 45, kitchen: 50, dining: 20, living: 25, other: 16 },
+                    minutes: { bedroom: 35, bathroom: 45, kitchen: 50, dining: 20, living: 30, other: 20 },
+                    promo: "15% off \u2014 through 2026",
+                    description: "Thorough top-to-bottom clean \u2014 baseboards, inside appliances, behind and under furniture, and detailed scrubbing beyond a routine visit." },
+        movein:   { name: "Move-In Clean",   short: "Before you unpack",
+                    rates: { bedroom: 32, bathroom: 45, kitchen: 48, dining: 20, living: 24, other: 15 },
+                    minutes: { bedroom: 30, bathroom: 40, kitchen: 45, dining: 18, living: 25, other: 18 },
+                    promo: "15% off \u2014 through 2026",
+                    description: "Deep clean of an empty home before belongings arrive \u2014 same thorough coverage as a move-out clean, so everything is sanitized and fresh on day one." },
+        moveout:  { name: "Move-Out Clean",  short: "Ready for the walkthrough",
+                    rates: { bedroom: 34, bathroom: 48, kitchen: 52, dining: 21, living: 27, other: 17 },
+                    minutes: { bedroom: 32, bathroom: 42, kitchen: 48, dining: 19, living: 27, other: 19 },
+                    promo: "15% off \u2014 through 2026",
+                    description: "Deep clean of an emptied home for landlord inspection or the next tenant \u2014 inside cabinets and appliances, baseboards, closets, and all rooms top to bottom." },
+        construction: { name: "Construction Clean", short: "Priced by square foot",
+                    perSqFt: 0.30, minutesPerSqFt: 0.07,
+                    promo: "Limited-time price \u2014 through 2026",
+                    description: "Post-renovation cleanup \u2014 clears dust and debris, wipes down all surfaces, cleans windows, fixtures, and vents, and detail-cleans floors." },
+        spring:   { name: "Spring Clean", short: "Seasonal top-to-bottom clean",
+                    rates: { bedroom: 19, bathroom: 27, kitchen: 30, dining: 12, living: 15, other: 10 },
+                    minutes: { bedroom: 35, bathroom: 45, kitchen: 50, dining: 20, living: 30, other: 20 },
+                    promo: "",
+                    description: "Our full deep clean at the seasonal rate \u2014 the same top-to-bottom detail as a standard deep clean. Becoming a repeat client offers additional discounts." }
+      }
+    };
+    var PRICE_DEFAULTS = HCC_PRICES;
+    var pricing = JSON.parse(JSON.stringify(PRICE_DEFAULTS));
+    var pricingSaved = null;
+
+    function showTab(which) {
+      ['gallery', 'pricing', 'sheet', 'reviews'].forEach(function (k) {
+        $('view-' + k).hidden = (which !== k);
+        $('tab-' + k).classList.toggle('on', which === k);
+        $('tab-' + k).setAttribute('aria-selected', which === k);
+      });
+      if (which === 'pricing') loadPricing();
+      if (which === 'sheet') { if (!pricingSaved && client) { loadPricing(); } renderSheet(); }
+      if (which === 'reviews') loadReviewList();
+    }
+    $('tab-reviews').addEventListener('click', function () { showTab('reviews'); });
+    $('tab-gallery').addEventListener('click', function () { showTab('gallery'); });
+    $('tab-pricing').addEventListener('click', function () { showTab('pricing'); });
+    $('tab-sheet').addEventListener('click', function () { showTab('sheet'); });
+
+    // ---- printable blank quote --------------------------------------
+    var SHEET_LOGO = "data:image/webp;base64,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";
+    function renderSheet() {
+      var withCard = $('sheet-card').checked;
+      var today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+      var h = '';
+      h += '<div class="ph"><div class="biz"><img src="' + SHEET_LOGO + '" alt="" /><div><b>Heather\'s Crowned Cleaning</b><span>getcrowned@heatherscrownedcleaning.com</span><span>Heather\'s Crowned Cleaning, LLC. Licensed &amp; Insured since 2026</span></div></div>' +
+           '<div class="qt"><b>Quote</b><span>Date <span class="line" style="min-width:110px"></span></span><span>Quote no. <span class="line" style="min-width:80px"></span></span></div></div>';
+      h += '<h4>Customer</h4><div class="cust">' +
+           '<div><span>Name</span><span class="line"></span></div><div><span>Phone</span><span class="line"></span></div>' +
+           '<div><span>Email</span><span class="line"></span></div><div><span>City / area</span><span class="line"></span></div>' +
+           '<div style="grid-column:1/-1"><span>Address</span><span class="line"></span></div></div>';
+      h += '<h4>Service</h4><div class="svcs">';
+      pricing.order.forEach(function (k) { var s = pricing.services[k]; if (s) h += '<div><span class="box"></span>' + esc(s.name) + '</div>'; });
+      h += '</div>';
+      h += '<h4>Rooms</h4><table><tr><th>Room</th><th>Count</th><th>Rate ($ each)</th><th>Line total</th></tr>';
+      pricing.rooms.forEach(function (r) { h += '<tr><td>' + esc(r[1]) + '</td><td class="num"></td><td class="num"></td><td class="n"></td></tr>'; });
+      h += '<tr><td>Construction clean (sq ft)</td><td class="num"></td><td class="num">$ / sq ft</td><td class="n"></td></tr>';
+      h += '<tr class="tot"><td colspan="3">Total &mdash; per visit, before tax</td><td class="n"></td></tr>';
+      h += '<tr><td colspan="3">Estimated time on site</td><td class="n"></td></tr></table>';
+      h += '<h4>Notes</h4><div class="notes"></div>';
+      h += '<div class="sig"><div><span>Quoted by</span><span class="line"></span></div><div><span>Valid until</span><span class="line"></span></div></div>';
+      h += '<p class="fine">Per visit, before tax. Quotes are estimates based on the counts above; the final price is confirmed after seeing the home. Prices and promotions subject to change.</p>';
+      h += '<div class="pf"><span>Heather\'s Crowned Cleaning &middot; heatherscrownedcleaning.com</span><span>Printed ' + today + '</span></div>';
+      if (withCard) {
+        h += '<div class="pagebreak"></div>';
+        h += '<div class="ph"><div class="biz"><img src="' + SHEET_LOGO + '" alt="" /><div><b>Heather\'s Crowned Cleaning</b><span>Rate card &mdash; for the quote on page 1</span></div></div><div class="qt"><b>Rates</b><span>Per room, per visit, before tax</span></div></div>';
+        h += '<h4>Price per room ($)</h4><table class="card"><tr><th>Service</th>';
+        pricing.rooms.forEach(function (r) { h += '<th style="text-align:right">' + esc(r[1]) + '</th>'; });
+        h += '</tr>';
+        pricing.order.forEach(function (k) {
+          var s = pricing.services[k]; if (!s) return;
+          if (s.perSqFt !== undefined) { h += '<tr><td>' + esc(s.name) + '</td><td colspan="' + pricing.rooms.length + '">' + money(s.perSqFt) + ' per square foot' + (s.minutesPerSqFt ? ' &middot; about ' + s.minutesPerSqFt + ' min / sq ft' : '') + '</td></tr>'; }
+          else { h += '<tr><td>' + esc(s.name) + '</td>'; pricing.rooms.forEach(function (r) { h += '<td>' + money(s.rates[r[0]] || 0) + '</td>'; }); h += '</tr>'; }
+          if (s.promo) h += '<tr class="badge"><td colspan="' + (pricing.rooms.length + 1) + '">' + esc(s.promo) + '</td></tr>';
+        });
+        h += '</table>';
+        h += '<h4>Estimated minutes per room</h4><table class="card"><tr><th>Service</th>';
+        pricing.rooms.forEach(function (r) { h += '<th style="text-align:right">' + esc(r[1]) + '</th>'; });
+        h += '</tr>';
+        pricing.order.forEach(function (k) {
+          var s = pricing.services[k]; if (!s || !s.minutes) return;
+          h += '<tr><td>' + esc(s.name) + '</td>'; pricing.rooms.forEach(function (r) { h += '<td>' + (s.minutes[r[0]] || 0) + '</td>'; }); h += '</tr>';
+        });
+        h += '</table>';
+        h += '<p class="fine">These are the rates saved in the website admin' + (pricingSaved ? '' : ' (starting prices; nothing saved yet)') + '. Change them under the Pricing tab and reprint.</p>';
+        h += '<div class="pf"><span>Heather\'s Crowned Cleaning &middot; heatherscrownedcleaning.com</span><span>Printed ' + today + '</span></div>';
+      }
+      $('paper').innerHTML = h;
+    }
+    $('sheet-card').addEventListener('change', renderSheet);
+    $('sheet-print').addEventListener('click', function () { renderSheet(); window.print(); });
+
+    function money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, ''); }
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+    function pricingRender() {
+      var host = $('p-services'); host.innerHTML = '';
+      pricing.order.forEach(function (key) {
+        var s = pricing.services[key]; if (!s) return;
+        var box = document.createElement('div'); box.className = 'p-svc';
+        var html = '<h3>' + esc(s.name) + '</h3>';
+        if (s.perSqFt !== undefined) {
+          html += '<div class="p-grid"><div><label>Price per sq ft ($)</label><input class="p-field" type="number" min="0" step="0.01" inputmode="decimal" data-key="' + key + '" data-field="perSqFt" value="' + s.perSqFt + '" /></div>' +
+                  '<div><label>Minutes per sq ft</label><input class="p-field" type="number" min="0" step="0.01" inputmode="decimal" data-key="' + key + '" data-field="minutesPerSqFt" value="' + (s.minutesPerSqFt || 0) + '" /></div></div>';
+        } else {
+          html += '<p class="p-sub">Price per room ($)</p><div class="p-grid">';
+          pricing.rooms.forEach(function (r) { html += '<div><label>' + esc(r[1]) + '</label><input class="p-field" type="number" min="0" step="1" inputmode="decimal" data-key="' + key + '" data-room="' + r[0] + '" value="' + (s.rates[r[0]] || 0) + '" /></div>'; });
+          html += '</div><p class="p-sub">Minutes per room</p><div class="p-grid">';
+          pricing.rooms.forEach(function (r) { html += '<div><label>' + esc(r[1]) + '</label><input class="p-field" type="number" min="0" step="1" inputmode="numeric" data-key="' + key + '" data-min="' + r[0] + '" value="' + ((s.minutes && s.minutes[r[0]]) || 0) + '" /></div>'; });
+          html += '</div>';
+        }
+        html += '<p class="p-sub">Badge shown to customers (blank for none)</p><input class="p-field" type="text" data-key="' + key + '" data-field="promo" value="' + esc(s.promo || '') + '" />';
+        html += '<p class="p-sub">Description</p><textarea class="p-field" spellcheck="true" data-key="' + key + '" data-field="description">' + esc(s.description || '') + '</textarea>';
+        box.innerHTML = html; host.appendChild(box);
+      });
+      pricingExample();
+    }
+    function pricingRead() {
+      $('p-services').querySelectorAll('input, textarea').forEach(function (inp) {
+        var s = pricing.services[inp.dataset.key]; if (!s) return;
+        if (inp.dataset.room) s.rates[inp.dataset.room] = Math.max(0, parseFloat(inp.value) || 0);
+        else if (inp.dataset.min) { s.minutes = s.minutes || {}; s.minutes[inp.dataset.min] = Math.max(0, parseFloat(inp.value) || 0); }
+        else if (inp.dataset.field === 'perSqFt') s.perSqFt = Math.max(0, parseFloat(inp.value) || 0);
+        else if (inp.dataset.field === 'minutesPerSqFt') s.minutesPerSqFt = Math.max(0, parseFloat(inp.value) || 0);
+        else if (inp.dataset.field === 'promo') s.promo = inp.value.trim();
+        else if (inp.dataset.field === 'description') s.description = inp.value.trim();
+      });
+    }
+    function pricingExample() {
+      pricingRead();
+      var s = pricing.services.deep, r = s.rates, sum = 3 * r.bedroom + 2 * r.bathroom + r.kitchen + r.dining + r.living;
+      $('p-example').innerHTML = 'Example: a 3-bed, 2-bath home with kitchen, dining and living room, deep clean = <b>' + money(sum) + '</b>.';
+    }
+    $('pricing-form').addEventListener('input', pricingExample);
+
+    function mergePricing(saved) {
+      var p = JSON.parse(JSON.stringify(PRICE_DEFAULTS));
+      if (saved && saved.services) Object.keys(saved.services).forEach(function (k) {
+        var base = p.services[k], s = saved.services[k]; if (!base || !s) return;
+        if (s.rates) base.rates = s.rates; if (s.minutes) base.minutes = s.minutes;
+        if (typeof s.perSqFt === 'number') base.perSqFt = s.perSqFt;
+        if (typeof s.minutesPerSqFt === 'number') base.minutesPerSqFt = s.minutesPerSqFt;
+        if (typeof s.promo === 'string') base.promo = s.promo;
+        if (typeof s.description === 'string') base.description = s.description;
+      });
+      return p;
+    }
+    function loadPricing() {
+      if (!client) return;
+      status('p-status', 'Loading\u2026');
+      client.from(HCC_SUPABASE.pricingTable).select('data,updated_at').eq('id', 'current').maybeSingle()
+        .then(function (r) {
+          if (r.error) { status('p-status', 'Could not load saved prices; showing the starting prices.', 'err'); pricingRender(); return; }
+          if (r.data && r.data.data) { pricing = mergePricing(r.data.data); pricingSaved = JSON.parse(JSON.stringify(pricing)); status('p-status', 'Last saved ' + new Date(r.data.updated_at).toLocaleString() + '.'); }
+          else { pricingSaved = null; status('p-status', 'Nothing saved yet \u2014 these are the starting prices. Save once to make them yours.'); }
+          pricingRender();
+        });
+    }
+    $('pricing-form').addEventListener('submit', function (e) {
+      e.preventDefault(); pricingRead();
+      $('p-save').disabled = true; status('p-status', 'Saving\u2026');
+      var payload = { services: {} };
+      Object.keys(pricing.services).forEach(function (k) {
+        var s = pricing.services[k], o = { promo: s.promo || '', description: s.description || '' };
+        if (s.rates) o.rates = s.rates; if (s.minutes) o.minutes = s.minutes;
+        if (s.perSqFt !== undefined) { o.perSqFt = s.perSqFt; o.minutesPerSqFt = s.minutesPerSqFt || 0; }
+        payload.services[k] = o;
+      });
+      client.from(HCC_SUPABASE.pricingTable).upsert({ id: 'current', data: payload, updated_at: new Date().toISOString() })
+        .then(function (r) {
+          $('p-save').disabled = false;
+          if (r.error) { status('p-status', 'Save failed: ' + r.error.message, 'err'); return; }
+          pricingSaved = JSON.parse(JSON.stringify(pricing));
+          status('p-status', 'Saved. The Quote page uses these prices now.', 'ok');
+        });
+    });
+    $('p-reset').addEventListener('click', function () { pricing = pricingSaved ? JSON.parse(JSON.stringify(pricingSaved)) : JSON.parse(JSON.stringify(PRICE_DEFAULTS)); pricingRender(); status('p-status', pricingSaved ? 'Back to the last saved prices.' : 'Back to the starting prices.'); });
+    pricingRender();
+    var prepared = { before: null, after: null, rev: null };   // { blob, width, height, url }
+
+    function show(panel) { ['panel-config', 'panel-login', 'panel-upload'].forEach(function (p) { $(p).hidden = (p !== panel); }); }
+    function status(id, msg, kind) { var el = $(id); el.textContent = msg || ''; el.className = 'status' + (kind ? ' ' + kind : ''); }
+
+    if (!HCC_SUPABASE.url || !HCC_SUPABASE.anonKey || !window.supabase) {
+      show('panel-config');
+    } else {
+      client = window.supabase.createClient(HCC_SUPABASE.url, HCC_SUPABASE.anonKey);
+      client.auth.getSession().then(function (r) { r.data.session ? enter(r.data.session) : show('panel-login'); });
+      client.auth.onAuthStateChange(function (_e, session) { session ? enter(session) : show('panel-login'); });
+    }
+
+    $('login-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      $('login-btn').disabled = true; status('login-status', 'Signing in…');
+      client.auth.signInWithPassword({ email: $('email').value.trim(), password: $('password').value })
+        .then(function (r) {
+          $('login-btn').disabled = false;
+          status('login-status', r.error ? 'That did not work. Check the email and password.' : '', r.error ? 'err' : '');
+        });
+    });
+    $('signout').addEventListener('click', function () { client.auth.signOut(); });
+    function enter(session) { $('who').textContent = 'Signed in as ' + (session.user.email || ''); show('panel-upload'); loadList(); }
+
+    // ---- look closer ----------------------------------------------
+    var zoom = $('zoom');
+    function openZoom(url, label) { $('zoom-img').src = url; $('zoom-label').textContent = label || ''; zoom.hidden = false; zoom.querySelector('.zoom-close').focus(); }
+    function closeZoom() { if (!zoom.hidden) { zoom.hidden = true; $('zoom-img').src = ''; } }
+    zoom.querySelector('.zoom-close').addEventListener('click', closeZoom);
+    zoom.addEventListener('click', function (e) { if (e.target === zoom) closeZoom(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeZoom(); });
+
+    // ---- drop targets ---------------------------------------------
+    ['before', 'after', 'rev'].forEach(function (side) {
+      var drop = $('drop-' + side), input = $('file-' + side);
+      input.addEventListener('change', function () { if (this.files && this.files[0]) take(side, this.files[0]); });
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+      ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+      drop.addEventListener('drop', function (e) {
+        var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) take(side, f);
+      });
+      drop.querySelector('.look').addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        if (prepared[side]) openZoom(prepared[side].url, side === 'before' ? 'Before getting a crown' : side === 'after' ? 'After being crowned' : 'Review image');
+      });
+      drop.querySelector('.clear').addEventListener('click', function (e) {
+        e.preventDefault(); e.stopPropagation(); clear(side);
+      });
+    });
+    // stop the browser from opening a dropped file anywhere else on the page
+    ['dragover', 'drop'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }); });
+
+    function take(side, file) {
+      status('upload-status', 'Preparing ' + side + ' photo…');
+      resizeImage(file).then(function (out) {
+        if (prepared[side]) URL.revokeObjectURL(prepared[side].url);
+        out.url = URL.createObjectURL(out.blob);
+        prepared[side] = out;
+        $('img-' + side).src = out.url;
+        $('drop-' + side).classList.add('has');
+        status('upload-status', side[0].toUpperCase() + side.slice(1) + ': ' + Math.round(out.blob.size / 1024) + ' KB, ' + out.width + '×' + out.height + '.');
+        gate();
+      }).catch(function () { status('upload-status', 'That file could not be read as a photo.', 'err'); });
+    }
+    function clear(side) {
+      if (prepared[side]) URL.revokeObjectURL(prepared[side].url);
+      prepared[side] = null;
+      $('img-' + side).src = ''; $('file-' + side).value = '';
+      $('drop-' + side).classList.remove('has');
+      gate();
+    }
+    function gateReview() { $('rev-publish').disabled = !(prepared.rev || $('rev-body').value.trim()); }
+    $('rev-body').addEventListener('input', gateReview);
+    function gate() {
+      gateReview();
+      var ok = !!(prepared.before && prepared.after);
+      $('publish-btn').disabled = !ok;
+      if (!ok) { var missing = !prepared.before ? 'before' : 'after'; if (prepared.before || prepared.after) status('upload-status', 'Now add the ' + missing + ' photo.'); }
+      else status('upload-status', 'Both photos ready. Add a description and publish.');
+    }
+
+    function resizeImage(file) {
+      return new Promise(function (resolve, reject) {
+        var img = new Image();
+        img.onload = function () {
+          var w = img.naturalWidth, h = img.naturalHeight, scale = Math.min(1, MAX_EDGE / Math.max(w, h));
+          var cw = Math.round(w * scale), ch = Math.round(h * scale);
+          var c = document.createElement('canvas'); c.width = cw; c.height = ch;
+          c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+          c.toBlob(function (blob) { blob ? resolve({ blob: blob, width: cw, height: ch }) : reject(); }, 'image/jpeg', JPEG_Q);
+          URL.revokeObjectURL(img.src);
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    // ---- reviews: publish ---------------------------------------------
+    $('rev-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var body = $('rev-body').value.replace(/\s+\n/g, '\n').trim(), name = $('rev-name').value.trim();
+      if (!prepared.rev && !body) { status('rev-status', 'Add the review text or an image first.', 'err'); return; }
+      $('rev-publish').disabled = true; status('rev-status', 'Publishing\u2026');
+      var row = { reviewer: name, body: body, source: $('rev-source').value, rating: $('rev-rating').value ? parseInt($('rev-rating').value, 10) : null, visible: $('rev-show').checked };
+      var bucket = client.storage.from(HCC_SUPABASE.bucket);
+      var path = prepared.rev ? 'reviews/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.jpg' : null;
+      var up = path ? bucket.upload(path, prepared.rev.blob, { contentType: 'image/jpeg', cacheControl: '31536000' }) : Promise.resolve({});
+      up.then(function (r) { if (r.error) throw r.error; if (path) row.image_path = path; return client.from(HCC_SUPABASE.reviewsTable).insert(row); })
+        .then(function (r) {
+          if (r.error) { if (path) bucket.remove([path]); throw r.error; }
+          status('rev-status', row.visible ? 'Published. It is on the Reviews page now.' : 'Saved as hidden. Show it from the list below whenever you like.', 'ok');
+          clear('rev'); $('rev-form').reset(); $('rev-show').checked = true; gateReview();
+          loadReviewList();
+        })
+        .catch(function (err) { status('rev-status', 'Publish failed: ' + (err.message || err), 'err'); gateReview(); });
+    });
+
+    // ---- reviews: list, edit, show/hide, delete ------------------------
+    function loadReviewList() {
+      if (!client) return;
+      status('rev-list-status', 'Loading\u2026');
+      client.from(HCC_SUPABASE.reviewsTable).select('id,reviewer,body,image_path,source,rating,visible,created_at').order('created_at', { ascending: false })
+        .then(function (r) {
+          if (r.error) { status('rev-list-status', 'Could not load the list.', 'err'); return; }
+          var list = $('rev-list'); list.innerHTML = '';
+          var rows = r.data || [], shown = rows.filter(function (x) { return x.visible; }).length;
+          status('rev-list-status', rows.length ? shown + ' showing on the Reviews page \u00b7 ' + (rows.length - shown) + ' hidden' : 'No reviews yet.');
+          rows.forEach(function (row) {
+            var url = row.image_path ? client.storage.from(HCC_SUPABASE.bucket).getPublicUrl(row.image_path).data.publicUrl : '';
+            var fig = document.createElement('figure'); fig.className = 'rv' + (row.visible ? '' : ' is-hidden');
+            var stars = row.rating ? '\u2605'.repeat(row.rating) + '\u2606'.repeat(5 - row.rating) : '';
+            fig.innerHTML = '<span class="state">' + (row.visible ? 'Showing' : 'Hidden') + '</span>' +
+              (url ? '<img src="' + url + '" alt="" loading="lazy" />' : '') +
+              '<div class="rv-main">' + (stars ? '<p class="rv-stars">' + stars + '</p>' : '') + (row.body ? '<p class="rv-body">' + esc(row.body) + '</p>' : '') +
+              '<p class="rv-who">' + (row.reviewer ? esc(row.reviewer) : 'A client') + ' \u00b7 ' + esc(row.source || '') + ' \u00b7 ' + new Date(row.created_at).toLocaleDateString() + '</p></div>' +
+              '<div class="actions"><button type="button" data-a="edit">Edit</button><button type="button" data-a="toggle">' + (row.visible ? 'Hide' : 'Show') + '</button><button type="button" data-a="delete">Delete</button></div>';
+            if (url) fig.querySelector('img').addEventListener('click', function () { openZoom(url, 'Review image'); });
+            fig.querySelector('[data-a="toggle"]').addEventListener('click', function () {
+              this.disabled = true;
+              client.from(HCC_SUPABASE.reviewsTable).update({ visible: !row.visible, updated_at: new Date().toISOString() }).eq('id', row.id)
+                .then(function (u) { if (u.error) throw u.error; loadReviewList(); })
+                .catch(function (err) { alert('Could not change that: ' + (err.message || err)); loadReviewList(); });
+            });
+            fig.querySelector('[data-a="delete"]').addEventListener('click', function () {
+              if (!confirm('Delete this review for good? This cannot be undone. If you just want it off the page, use Hide.')) return;
+              this.disabled = true;
+              client.from(HCC_SUPABASE.reviewsTable).delete().eq('id', row.id)
+                .then(function (d) { if (d.error) throw d.error; return row.image_path ? client.storage.from(HCC_SUPABASE.bucket).remove([row.image_path]) : {}; })
+                .then(loadReviewList)
+                .catch(function (err) { alert('Could not delete: ' + (err.message || err)); loadReviewList(); });
+            });
+            fig.querySelector('[data-a="edit"]').addEventListener('click', function () {
+              if (fig.querySelector('.edit')) { fig.querySelector('.edit').remove(); return; }
+              var ed = document.createElement('div'); ed.className = 'edit';
+              ed.innerHTML = '<input type="text" placeholder="Who said it" value="' + esc(row.reviewer || '') + '" />' +
+                '<textarea spellcheck="true">' + esc(row.body || '') + '</textarea>' +
+                '<div class="row"><select><option value="">No stars</option>' + [5,4,3,2,1].map(function (n) { return '<option value="' + n + '"' + (row.rating === n ? ' selected' : '') + '>' + n + ' stars</option>'; }).join('') + '</select>' +
+                '<select>' + ['facebook','google','other'].map(function (s) { return '<option value="' + s + '"' + (row.source === s ? ' selected' : '') + '>' + s.charAt(0).toUpperCase() + s.slice(1) + '</option>'; }).join('') + '</select></div>' +
+                '<div class="row"><button class="btn" type="button" style="margin-top:0">Save</button><button class="btn btn-quiet" type="button" style="margin-top:0">Cancel</button></div>';
+              var btns = ed.querySelectorAll('button');
+              btns[1].addEventListener('click', function () { ed.remove(); });
+              btns[0].addEventListener('click', function () {
+                var sel = ed.querySelectorAll('select');
+                var patch = { reviewer: ed.querySelector('input').value.trim(), body: ed.querySelector('textarea').value.trim(), rating: sel[0].value ? parseInt(sel[0].value, 10) : null, source: sel[1].value, updated_at: new Date().toISOString() };
+                if (!patch.body && !row.image_path) { alert('A review needs text or an image.'); return; }
+                btns[0].disabled = true;
+                client.from(HCC_SUPABASE.reviewsTable).update(patch).eq('id', row.id)
+                  .then(function (u) { if (u.error) throw u.error; loadReviewList(); })
+                  .catch(function (err) { btns[0].disabled = false; alert('Could not save: ' + (err.message || err)); });
+              });
+              fig.insertBefore(ed, fig.querySelector('.actions'));
+            });
+            list.appendChild(fig);
+          });
+        });
+    }
+
+    // ---- publish ----------------------------------------------------
+    $('upload-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!(prepared.before && prepared.after)) return;
+      var caption = $('caption').value.replace(/\s+/g, ' ').trim();
+      if (!caption) { status('upload-status', 'Add a description first.', 'err'); $('caption').focus(); return; }
+      $('publish-btn').disabled = true; status('upload-status', 'Publishing…');
+      var stem = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      var paths = { before: stem + '-before.jpg', after: stem + '-after.jpg' };
+      var bucket = client.storage.from(HCC_SUPABASE.bucket);
+      var opts = { contentType: 'image/jpeg', cacheControl: '31536000' };
+      bucket.upload(paths.before, prepared.before.blob, opts)
+        .then(function (r) { if (r.error) throw r.error; return bucket.upload(paths.after, prepared.after.blob, opts); })
+        .then(function (r) { if (r.error) throw r.error; return client.from(HCC_SUPABASE.table).insert({ before_path: paths.before, after_path: paths.after, caption: caption, visible: $('show-on-publish').checked }); })
+        .then(function (r) {
+          if (r.error) { bucket.remove([paths.before, paths.after]); throw r.error; }
+          status('upload-status', $('show-on-publish').checked ? 'Published. It is live on the Gallery page now.' : 'Saved as hidden. Show it from the list below whenever you like.', 'ok');
+          clear('before'); clear('after'); $('caption').value = ''; $('show-on-publish').checked = true;
+          loadList();
+        })
+        .catch(function (err) {
+          bucket.remove([paths.before, paths.after]);
+          status('upload-status', 'Publish failed: ' + (err.message || err), 'err');
+          $('publish-btn').disabled = false;
+        });
+    });
+
+    // ---- list + remove ----------------------------------------------
+    function loadList() {
+      status('list-status', 'Loading…');
+      client.from(HCC_SUPABASE.table).select('id,before_path,after_path,caption,created_at,visible').order('created_at', { ascending: false })
+        .then(function (r) {
+          if (r.error) { status('list-status', 'Could not load the list.', 'err'); return; }
+          var list = $('list'); list.innerHTML = '';
+          var rows = r.data || [];
+          var shown = rows.filter(function (x) { return x.visible; }).length;
+          status('list-status', rows.length ? shown + ' showing on the Gallery page \u00b7 ' + (rows.length - shown) + ' hidden' : 'Nothing published yet.');
+          rows.forEach(function (row) {
+            var pub = function (p) { return client.storage.from(HCC_SUPABASE.bucket).getPublicUrl(p).data.publicUrl; };
+            var b = pub(row.before_path), a = pub(row.after_path);
+            var fig = document.createElement('figure'); fig.className = 'item' + (row.visible ? '' : ' is-hidden');
+            var pics = document.createElement('div'); pics.className = 'pics';
+            var state = document.createElement('span'); state.className = 'state'; state.textContent = row.visible ? 'Showing' : 'Hidden';
+            pics.appendChild(state);
+            [['Before', b, 'Before getting a crown'], ['After', a, 'After being crowned']].forEach(function (x) {
+              var d = document.createElement('div');
+              var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = x[0];
+              var img = document.createElement('img'); img.src = x[1]; img.alt = x[0]; img.loading = 'lazy';
+              img.addEventListener('click', function () { openZoom(x[1], x[2]); });
+              d.appendChild(tag); d.appendChild(img); pics.appendChild(d);
+            });
+            var cap = document.createElement('figcaption'); cap.textContent = row.caption;
+            var when = document.createElement('time'); when.dateTime = row.created_at;
+            when.textContent = new Date(row.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            cap.appendChild(when);
+            var actions = document.createElement('div'); actions.className = 'actions';
+            var tog = document.createElement('button'); tog.type = 'button'; tog.textContent = row.visible ? 'Hide from Gallery' : 'Show on Gallery';
+            tog.addEventListener('click', function () {
+              tog.disabled = true;
+              client.from(HCC_SUPABASE.table).update({ visible: !row.visible }).eq('id', row.id)
+                .then(function (u) { if (u.error) throw u.error; loadList(); })
+                .catch(function (err) { tog.disabled = false; alert('Could not change that: ' + (err.message || err)); });
+            });
+            var del = document.createElement('button'); del.type = 'button'; del.textContent = 'Delete';
+            del.addEventListener('click', function () {
+              if (!confirm('Delete this before-and-after for good? Both photos and the description are removed. This cannot be undone. If you just want it off the Gallery page, use Hide instead.')) return;
+              del.disabled = true;
+              client.from(HCC_SUPABASE.table).delete().eq('id', row.id)
+                .then(function (d) { if (d.error) throw d.error; return client.storage.from(HCC_SUPABASE.bucket).remove([row.before_path, row.after_path]); })
+                .then(loadList)
+                .catch(function (err) { del.disabled = false; alert('Could not remove: ' + (err.message || err)); });
+            });
+            actions.appendChild(tog); actions.appendChild(del);
+            fig.appendChild(pics); fig.appendChild(cap); fig.appendChild(actions);
+            list.appendChild(fig);
+          });
+        });
+    }
+  </script>
+</body>
+</html>

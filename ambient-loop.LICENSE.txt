@@ -1,0 +1,7 @@
+ambient-loop.ogg — licence and source
+Track: "Sleepy Upright Piano Seamless Loop" by blankie.rest
+Source: https://freesound.org/people/blankie.rest/sounds/859607/
+Licence: Creative Commons Zero (CC0 1.0) — https://creativecommons.org/publicdomain/zero/1.0/
+No attribution required. Prepared for heatherscrownedcleaning.com by Malfunction Labs (Audio.0), 2026-09-11:
+OGG Vorbis, 48 kHz, stereo, ~128 kbps, 115.8 s, loudness-normalised to -16 LUFS integrated, -1.5 dBTP.
+Mastered from Freesound's public high-quality preview stream, not the original WAV (login-gated).
