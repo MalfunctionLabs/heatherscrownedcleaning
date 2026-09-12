@@ -1,4 +1,6 @@
-<!-- HCC site — v52 (admin v28) — the printable CUSTOMER quote fits one page,
+<!-- HCC site — v53 (admin v28, unchanged) — the enlarged gallery view can
+     finally get from before to after. See the comment on `lb` for the fault.
+     Previously, v52 (admin v28) — the printable CUSTOMER quote fits one page,
      carries the MESH.1 stamp, and has a Close button. See quote-doc.js v3.
      Previously, v51 (admin v27) — a saved price sheet no longer overrides
      every field. See pricing-core.js. Previously, v50 (admin v25) — on top of v49:
@@ -85,9 +87,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev52.28 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev53.28 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev52.28=site build plus admin build.
+     v1=first live deployment, rev53.28=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -1070,7 +1072,7 @@
     </div>
     <p class="lb-cap" id="lightbox-cap"></p>
     <p class="lb-count" id="lightbox-count"></p>
-    <p class="lb-hint">Tap a photo to look closer. Tap again for the pair. Arrows, keys or swipe move between pairs.</p>
+    <p class="lb-hint">Tap a photo to fill the screen, then swipe or use the arrows to go between before and after. Tap again for the pair.</p>
   </div>
 
   <div class="stage">
@@ -1273,7 +1275,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev52.28</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev53.28</span>
   </div>
 
   <script src="pricing-core.js"></script>
@@ -1499,37 +1501,85 @@
     function stopWall() { if (wall.timer) { clearInterval(wall.timer); wall.timer = null; } }
 
     var lightbox = document.getElementById('lightbox');
-    var lb = { index: 0 };
-    function showPair(i) {
+    /* v53: `single` is null when both photos are shown, otherwise 'before' or
+       'after' for the one filling the view.
+
+       WHAT WAS WRONG. Arrows, keys and swipe all called showPair(), which
+       moves to a different PAIR and drops out of the zoomed view. So once a
+       photo was tapped to fill the screen there was no way to reach the other
+       half of the same pair — on a phone, where the side-by-side view is two
+       32vh thumbnails, that is the only view worth having.
+
+       Worse, the arrows were hidden whenever there was a single pair, and
+       Heather has published exactly one. So on the live site there was nothing
+       to press and swipe wrapped to the photo already on screen. Three
+       symptoms, one cause.
+
+       NOW: zoomed in, the controls walk a flat sequence of every photo —
+       before, after, next pair's before, and so on. Zoomed out they still move
+       pair to pair. Arrows appear whenever there is somewhere to go, which
+       with one pair means whenever you are zoomed in. */
+    var lb = { index: 0, single: null };
+    var lbPrev = lightbox.querySelector('.lb-nav.prev');
+    var lbNext = lightbox.querySelector('.lb-nav.next');
+
+    function lbSyncNav() {
+      var n = wall.pairs.length;
+      var canMove = lb.single ? (n * 2 > 1) : (n > 1);
+      lbPrev.hidden = !canMove;
+      lbNext.hidden = !canMove;
+      document.getElementById('lightbox-count').textContent =
+        (lb.single ? (lb.single === 'before' ? 'Before' : 'After') + ' \u00b7 ' : '') +
+        (lb.index + 1) + ' of ' + n;
+    }
+
+    function lbSetSingle(side) {
+      lb.single = side || null;
+      var b = document.getElementById('lb-before'), a = document.getElementById('lb-after');
+      lightbox.classList.toggle('single', !!lb.single);
+      b.classList.toggle('off', lb.single === 'after');
+      a.classList.toggle('off', lb.single === 'before');
+      lbSyncNav();
+    }
+
+    function showPair(i, keepZoom) {
       var n = wall.pairs.length; if (!n) return;
       lb.index = ((i % n) + n) % n;
       var pair = wall.pairs[lb.index];
       document.getElementById('lb-before-img').src = pair.before;
       document.getElementById('lb-after-img').src = pair.after;
       document.getElementById('lightbox-cap').textContent = pair.caption;
-      document.getElementById('lightbox-count').textContent = (lb.index + 1) + ' of ' + n;
-      lightbox.classList.remove('single');
-      document.getElementById('lb-before').classList.remove('off');
-      document.getElementById('lb-after').classList.remove('off');
       // warm the neighbours so stepping feels instant
       [lb.index + 1, lb.index - 1].forEach(function (j) {
         var p = wall.pairs[((j % n) + n) % n]; var a = new Image(), b = new Image(); a.src = p.before; b.src = p.after;
       });
-      var one = n === 1;
-      lightbox.querySelector('.lb-nav.prev').hidden = one;
-      lightbox.querySelector('.lb-nav.next').hidden = one;
+      if (!keepZoom) lbSetSingle(null); else lbSyncNav();
     }
+
+    /* One step of the controls. Zoomed out that is a pair; zoomed in it is a
+       photo, counted across every pair so the end of one runs into the next. */
+    function lbStep(dir) {
+      var n = wall.pairs.length; if (!n) return;
+      if (!lb.single) { showPair(lb.index + dir); return; }
+      var total = n * 2;
+      var flat = lb.index * 2 + (lb.single === 'after' ? 1 : 0);
+      flat = ((flat + dir) % total + total) % total;
+      var pi = Math.floor(flat / 2), side = (flat % 2) ? 'after' : 'before';
+      if (pi !== lb.index) showPair(pi, true);
+      lbSetSingle(side);
+    }
+
     function openLightbox(i) {
       showPair(i);
       lightbox.hidden = false;
       lightbox.querySelector('.lightbox-close').focus();
     }
-    lightbox.querySelector('.lb-nav.prev').addEventListener('click', function (e) { e.stopPropagation(); showPair(lb.index - 1); });
-    lightbox.querySelector('.lb-nav.next').addEventListener('click', function (e) { e.stopPropagation(); showPair(lb.index + 1); });
+    lbPrev.addEventListener('click', function (e) { e.stopPropagation(); lbStep(-1); });
+    lbNext.addEventListener('click', function (e) { e.stopPropagation(); lbStep(1); });
     document.addEventListener('keydown', function (e) {
       if (lightbox.hidden) return;
-      if (e.key === 'ArrowLeft') { e.preventDefault(); showPair(lb.index - 1); }
-      if (e.key === 'ArrowRight') { e.preventDefault(); showPair(lb.index + 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); lbStep(-1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); lbStep(1); }
     });
     (function () {
       var x0 = null, y0 = null;
@@ -1537,7 +1587,7 @@
       lightbox.addEventListener('touchend', function (e) {
         if (x0 === null) return;
         var p = e.changedTouches[0], dx = p.clientX - x0, dy = p.clientY - y0; x0 = y0 = null;
-        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) showPair(lb.index + (dx < 0 ? 1 : -1));
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) lbStep(dx < 0 ? 1 : -1);
       }, { passive: true });
     })();
     function closeLightbox() {
@@ -1549,14 +1599,10 @@
     lightbox.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
     lightbox.addEventListener('click', function (e) { if (e.target === lightbox) closeLightbox(); });
     // tap a photo: fill the view with that one; tap again: back to the pair
-    ['lb-before', 'lb-after'].forEach(function (id, i) {
+    ['lb-before', 'lb-after'].forEach(function (id) {
+      var side = id === 'lb-before' ? 'before' : 'after';
       document.getElementById(id).querySelector('img').addEventListener('click', function () {
-        var other = document.getElementById(i === 0 ? 'lb-after' : 'lb-before');
-        if (lightbox.classList.contains('single')) {
-          lightbox.classList.remove('single'); other.classList.remove('off');
-        } else {
-          lightbox.classList.add('single'); other.classList.add('off');
-        }
+        lbSetSingle(lb.single ? null : side);
       });
     });
 
