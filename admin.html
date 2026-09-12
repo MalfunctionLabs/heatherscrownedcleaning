@@ -1,4 +1,7 @@
-<!-- HCC admin — v19 — a quote now OPENS to the whole thing: every line, the
+<!-- HCC admin — v20 — the blank quote sheet reworked: two pages instead of
+     four, ML watermark, the site's footer on paper, and its own frozen version
+     number (see SHEET_TAG). Otherwise v19, where a quote began OPENING to the
+     whole thing: every line, the
      discount, the total, the time, the reference and the customer's details,
      laid out the way the printed sheet lays it out. It used to summarise and
      hand you a Print button if you actually wanted to read it. Otherwise v18,
@@ -23,7 +26,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.19 — the 19 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev48.20 — the 20 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -284,15 +287,47 @@
     .paper .card td { text-align: right; padding: 5px 7px; font-size: 11px; }
     .paper .card td:first-child { text-align: left; font-weight: 600; }
     .paper .card tr.badge td { font-weight: 400; font-size: 9.5px; color: #555; border-top: 0; }
+    /* v20: the blank quote printed on FOUR sheets. Two, or it is not usable.
+       Everything below is tightening, plus a watermark and the site footer. */
+    .paper .sheet { position: relative; }
+    .paper .wm {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      pointer-events: none; z-index: 0;
+    }
+    .paper .wm img { width: 58%; max-width: 320px; opacity: .055; }
+    .paper .sheet > *:not(.wm) { position: relative; z-index: 1; }
+    .paper h4 { margin: 8px 0 4px; font-size: 9px; }
+    .paper th, .paper td { padding: 3px 6px; }
+    .paper th { font-size: 9px; }
+    .paper .notes { height: 42px; }
+    .paper .sig { margin-top: 10px; }
+    .paper .fine { margin-top: 8px; font-size: 8.5px; line-height: 1.4; }
+    .paper .ph { padding-bottom: 8px; }
+    .paper .ph img { width: 38px; height: 38px; }
+    .paper .ph .biz b { font-size: 14px; }
+    .paper .ph .qt b { font-size: 17px; }
+    .paper .ph .qt span { margin-top: 4px; font-size: 10px; }
+    .paper .cust { gap: 6px 20px; }
+    .paper .svcs { gap: 4px 10px; }
+    .paper tr.tot td { font-size: 13px; }
+    .paper .line { height: 13px; }
+    .paper table { page-break-inside: avoid; break-inside: avoid; }
+    /* the site's own footer, on paper */
+    .paper .sf { margin-top: 14px; padding-top: 8px; border-top: 1px solid #1a1816; text-align: center; font-size: 9.5px; color: #555; line-height: 1.55; }
+    .paper .sf .row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; text-align: left; }
+    .paper .sf .tag { display: block; margin-top: 5px; text-align: right; font-size: 7px; letter-spacing: .06em; color: #999; }
+    /* rate card: one table carrying rate AND minutes, instead of two tables */
+    .paper .card td .mins { display: block; font-size: 8.5px; color: #777; margin-top: 1px; }
     .pagebreak { page-break-before: always; break-before: page; margin-top: 24px; }
     @media (max-width: 600px) { .paper { padding: 20px 16px; } .paper .svcs { grid-template-columns: repeat(2, 1fr); } .paper .cust { grid-template-columns: 1fr; } }
     @media print {
       body { background: #fff; }
       .wrap > *:not(#panel-upload), .topbar, .tabs, #view-gallery, #view-pricing, .sheet-tools, .foot, #zoom { display: none !important; }
       #view-sheet { display: block !important; }
-      .paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0; font-size: 12px; }
+      .paper { box-shadow: none; border-radius: 0; padding: 0; margin: 0; font-size: 11px; }
+      .paper .wm img { opacity: .07; }
       .pagebreak { margin-top: 0; }
-      @page { margin: 16mm; }
+      @page { margin: 12mm; }
     }
     @media (max-width: 480px) { .pair-in { gap: 8px; } .drop { font-size: 12px; padding: 10px; } }
   </style>
@@ -454,7 +489,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.19</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev48.20</span>
     </div>
   </div>
 
@@ -743,11 +778,41 @@
 
     // ---- printable blank quote --------------------------------------
     var SHEET_LOGO = "data:image/webp;base64,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";
+    /* THE SHEET'S OWN VERSION. Frozen on purpose.
+
+       It reads ML.WD.WEBHCC-v1,rev<site>.<admin>.<sheet>. The first two are
+       the website build this sheet was last edited against; the last is the
+       sheet's own revision. The website moves on without touching this
+       string. It changes ONLY when the sheet itself is edited, and when it
+       does, whoever edits it sets it to the CURRENT site build and bumps the
+       last number.
+
+       That is the whole point: a printed quote in a drawer six months from
+       now tells you which version of the site it came from. Auto-filling it
+       from the live build would destroy exactly that. */
+    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev48.20.1';
+
+    function sheetFooter(today) {
+      return '<div class="sf">' +
+        '<div class="row">' +
+          '<span>&copy; 2026 Heather\'s Crowned Cleaning, LLC</span>' +
+          '<span>Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</span>' +
+        '</div>' +
+        '<div>Heather\'s Crowned Cleaning, LLC. Licensed &amp; Insured since 2026 &middot; heatherscrownedcleaning.com</div>' +
+        '<div>Printed ' + esc(today) + '</div>' +
+        '<span class="tag">' + esc(SHEET_TAG) + '</span>' +
+      '</div>';
+    }
+
     function renderSheet() {
       var withCard = $('sheet-card').checked;
       var today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+      var wm = '<div class="wm"><img src="ml-watermark.webp" alt="" /></div>';
       var h = '';
-      h += '<div class="ph"><div class="biz"><img src="' + SHEET_LOGO + '" alt="" /><div><b>Heather\'s Crowned Cleaning</b><span>getcrowned@heatherscrownedcleaning.com</span><span>Heather\'s Crowned Cleaning, LLC. Licensed &amp; Insured since 2026</span></div></div>' +
+
+      /* ---------------- page 1: the blank quote ---------------- */
+      h += '<div class="sheet">' + wm;
+      h += '<div class="ph"><div class="biz"><img src="' + SHEET_LOGO + '" alt="" /><div><b>Heather\'s Crowned Cleaning</b><span>getcrowned@heatherscrownedcleaning.com &middot; 801.882.3310</span><span>Heather\'s Crowned Cleaning, LLC. Licensed &amp; Insured since 2026</span></div></div>' +
            '<div class="qt"><b>Quote</b><span>Date <span class="line" style="min-width:110px"></span></span><span>Quote no. <span class="line" style="min-width:80px"></span></span></div></div>';
       h += '<h4>Customer</h4><div class="cust">' +
            '<div><span>Name</span><span class="line"></span></div><div><span>Phone</span><span class="line"></span></div>' +
@@ -759,38 +824,47 @@
       h += '<h4>Rooms</h4><table><tr><th>Room</th><th>Count</th><th>Rate ($ each)</th><th>Line total</th></tr>';
       pricing.rooms.forEach(function (r) { h += '<tr><td>' + esc(r[1]) + '</td><td class="num"></td><td class="num"></td><td class="n"></td></tr>'; });
       h += '<tr><td>Construction clean (sq ft)</td><td class="num"></td><td class="num">$ / sq ft</td><td class="n"></td></tr>';
+      h += '<tr><td>Discount</td><td class="num"></td><td class="num">% off</td><td class="n"></td></tr>';
       h += '<tr class="tot"><td colspan="3">Total &mdash; per visit, before tax</td><td class="n"></td></tr>';
       h += '<tr><td colspan="3">Estimated time on site</td><td class="n"></td></tr></table>';
       h += '<h4>Notes</h4><div class="notes"></div>';
       h += '<div class="sig"><div><span>Quoted by</span><span class="line"></span></div><div><span>Valid until</span><span class="line"></span></div></div>';
-      h += '<p class="fine">Per visit, before tax. Quotes are estimates based on the counts above; the final price is confirmed after seeing the home. Prices and promotions subject to change.</p>';
-      h += '<div class="pf"><span>Heather\'s Crowned Cleaning &middot; heatherscrownedcleaning.com</span><span>Printed ' + today + '</span></div>';
+      h += '<p class="fine">Per visit, before tax. Quotes are estimates based on the counts above; the final price is confirmed after seeing the home. Times shown are an estimate for one cleaner and vary with the condition of the home. Prices and promotions subject to change.</p>';
+      h += sheetFooter(today);
+      h += '</div>';
+
+      /* ---------------- page 2: the rate card ----------------
+         Rates and minutes used to be two full tables, which is what pushed
+         this print to four sheets. One table now, with the minutes tucked
+         under each rate. */
       if (withCard) {
-        h += '<div class="pagebreak"></div>';
+        h += '<div class="pagebreak"></div><div class="sheet">' + wm;
         h += '<div class="ph"><div class="biz"><img src="' + SHEET_LOGO + '" alt="" /><div><b>Heather\'s Crowned Cleaning</b><span>Rate card &mdash; for the quote on page 1</span></div></div><div class="qt"><b>Rates</b><span>Per room, per visit, before tax</span></div></div>';
-        h += '<h4>Price per room ($)</h4><table class="card"><tr><th>Service</th>';
+        h += '<h4>Price per room, with the estimated minutes beneath</h4><table class="card"><tr><th>Service</th>';
         pricing.rooms.forEach(function (r) { h += '<th style="text-align:right">' + esc(r[1]) + '</th>'; });
         h += '</tr>';
+        var deals = [];
         pricing.order.forEach(function (k) {
-          var s = pricing.services[k]; if (!s) return;
-          if (s.perSqFt !== undefined) { h += '<tr><td>' + esc(s.name) + '</td><td colspan="' + pricing.rooms.length + '">' + money(s.perSqFt) + ' per square foot' + (s.minutesPerSqFt ? ' &middot; about ' + s.minutesPerSqFt + ' min / sq ft' : '') + '</td></tr>'; }
-          else { h += '<tr><td>' + esc(s.name) + '</td>'; pricing.rooms.forEach(function (r) { h += '<td>' + money(s.rates[r[0]] || 0) + '</td>'; }); h += '</tr>'; }
-          /* the printed rate card shows the discount as a line under the
-             service, since the room rates above it are the full prices */
-          var rd = dealFor(k), dpc = rd.pct, dwhy = rd.why;
-          if (dpc > 0 && dpc < 100) h += '<tr class="badge"><td colspan="' + (pricing.rooms.length + 1) + '">' + esc(dpc + '% off' + (dwhy ? ' — ' + dwhy : '') + ', taken off the total') + '</td></tr>';
+          var sv = pricing.services[k]; if (!sv) return;
+          var rd = dealFor(k);
+          if (rd.pct) deals.push(sv.name + ' \u2014 ' + rd.pct + '% off' + (rd.why ? ' (' + rd.why + ')' : ''));
+          if (sv.perSqFt !== undefined) {
+            h += '<tr><td>' + esc(sv.name) + '</td><td colspan="' + pricing.rooms.length + '">' + money(sv.perSqFt) + ' per square foot' +
+                 (sv.minutesPerSqFt ? '<span class="mins">about ' + sv.minutesPerSqFt + ' min / sq ft</span>' : '') + '</td></tr>';
+          } else {
+            h += '<tr><td>' + esc(sv.name) + '</td>';
+            pricing.rooms.forEach(function (r) {
+              var mn = (sv.minutes && sv.minutes[r[0]]) || 0;
+              h += '<td>' + money(sv.rates[r[0]] || 0) + (mn ? '<span class="mins">' + mn + ' min</span>' : '') + '</td>';
+            });
+            h += '</tr>';
+          }
         });
         h += '</table>';
-        h += '<h4>Estimated minutes per room</h4><table class="card"><tr><th>Service</th>';
-        pricing.rooms.forEach(function (r) { h += '<th style="text-align:right">' + esc(r[1]) + '</th>'; });
-        h += '</tr>';
-        pricing.order.forEach(function (k) {
-          var s = pricing.services[k]; if (!s || !s.minutes) return;
-          h += '<tr><td>' + esc(s.name) + '</td>'; pricing.rooms.forEach(function (r) { h += '<td>' + (s.minutes[r[0]] || 0) + '</td>'; }); h += '</tr>';
-        });
-        h += '</table>';
+        if (deals.length) h += '<p class="fine"><b>Discounts, taken off the total:</b> ' + esc(deals.join('  \u00b7  ')) + '</p>';
         h += '<p class="fine">These are the rates saved in the website admin' + (pricingSaved ? '' : ' (starting prices; nothing saved yet)') + '. Change them under the Pricing tab and reprint.</p>';
-        h += '<div class="pf"><span>Heather\'s Crowned Cleaning &middot; heatherscrownedcleaning.com</span><span>Printed ' + today + '</span></div>';
+        h += sheetFooter(today);
+        h += '</div>';
       }
       $('paper').innerHTML = h;
     }
