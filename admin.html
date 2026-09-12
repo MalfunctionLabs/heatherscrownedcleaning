@@ -1,4 +1,6 @@
-<!-- HCC admin — v26 — two things. Photos can be ROTATED 90 degrees after
+<!-- HCC admin — v27 — every Save now keeps a copy of the sheet it replaced,
+     five deep, restorable from a dropdown in the Pricing toolbar. Otherwise
+     v26, which did two things. Photos can be ROTATED 90 degrees after
      upload, because phone photos arrive sideways. And a saved price sheet no
      longer blocks code corrections: pricing-core.js merges field by field, so
      "Load the built-in prices" is an escape hatch rather than a step you take
@@ -43,7 +45,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev51.26 — the 26 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev51.27 — the 27 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -265,6 +267,9 @@
     .p-jump button:hover { color: var(--taupe); border-color: var(--taupe); }
     .p-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
     .p-toolbar .btn { margin-top: 0; padding: 7px 12px; font-size: 12px; }
+    /* v27: every Save keeps a copy. This is the way back from a mis-click. */
+    .p-hist { display: inline-flex; gap: 6px; align-items: center; margin-left: 8px; }
+    .p-hist select { background: rgba(19,17,16,.6); color: var(--ivory); border: 1px solid rgba(156,139,118,.5); border-radius: 8px; padding: 7px 9px; font: inherit; font-size: 12px; max-width: 260px; }
 
     /* v5: printable quote sheet. On screen it previews as paper; when
        printing, only the sheet prints. */
@@ -472,6 +477,10 @@
           <button class="btn" type="submit" id="p-save">Save prices</button>
           <button class="btn btn-quiet" type="button" id="p-reset" style="margin-left:8px;">Back to the last saved</button>
           <button class="btn btn-quiet" type="button" id="p-defaults" style="margin-left:8px;">Start over from the built-in prices</button>
+          <span class="p-hist">
+            <select id="p-history" aria-label="Earlier saves"><option value="">Earlier saves…</option></select>
+            <button class="btn btn-quiet" type="button" id="p-restore" disabled>Load it</button>
+          </span>
           <p class="status" id="p-status"></p>
         </form>
       </div>
@@ -539,7 +548,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev51.26</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev51.27</span>
     </div>
   </div>
 
@@ -818,7 +827,7 @@
         $('tab-' + k).classList.toggle('on', which === k);
         $('tab-' + k).setAttribute('aria-selected', which === k);
       });
-      if (which === 'pricing') loadPricing();
+      if (which === 'pricing') { loadPricing(); loadHistory(); }
       if (which === 'sheet') { if (!pricingSaved && client) { loadPricing(); } renderSheet(); }
       if (which === 'reviews') loadReviewList();
       if (which === 'quotes') loadQuotes();
@@ -1108,6 +1117,75 @@
           pricingRender();
         });
     }
+    /* v27: PRICE HISTORY. Every Save stores a copy of the sheet it replaced,
+       five deep, so a wrong button is recoverable.
+
+       It lives in its own row, id 'history', NOT inside 'current'. The public
+       site fetches 'current' on every visit; burying five old sheets in it
+       would make every visitor download them. Nothing reads 'history' except
+       this page.
+
+       No schema change and no new policy: the pricing table already allows an
+       authenticated insert and update, and this only ever upserts one row. It
+       never deletes, because there is no delete policy on that table and
+       adding one for a housekeeping nicety is not worth another SQL step.
+
+       NOTE ON WHY THIS IS NOT THE ANSWER TO WEBSITE UPDATES. Since v51 a
+       deploy cannot overwrite Heather's prices at all — pricing-core.js keeps
+       every field she actually set. This is insurance against a mis-click,
+       which is the thing that actually cost the discounts. */
+    var HISTORY_KEEP = 5;
+    var priceHistory = [];
+
+    function histLabel(e) {
+      var d = new Date(e.savedAt);
+      var when = isNaN(d) ? 'unknown date' : d.toLocaleString();
+      return when + (e.note ? ' \u2014 ' + e.note : '');
+    }
+    function renderHistory() {
+      var sel = $('p-history');
+      sel.innerHTML = '<option value="">' +
+        (priceHistory.length ? 'Earlier saves\u2026' : 'No earlier saves yet') + '</option>' +
+        priceHistory.map(function (e, i) {
+          return '<option value="' + i + '">' + esc(histLabel(e)) + '</option>';
+        }).join('');
+      sel.disabled = !priceHistory.length;
+      $('p-restore').disabled = true;
+    }
+    function loadHistory() {
+      if (!client) return;
+      client.from(HCC_SUPABASE.pricingTable).select('data').eq('id', 'history').maybeSingle()
+        .then(function (r) {
+          priceHistory = (r && r.data && r.data.data && Array.isArray(r.data.data.entries)) ? r.data.data.entries : [];
+          renderHistory();
+        }, function () { renderHistory(); });
+    }
+    /* Called with the sheet being REPLACED, so the newest entry is always the
+       state you can get back to. Failure here never fails the save: losing a
+       history entry is an inconvenience, losing the save is not. */
+    function pushHistory(replaced, note) {
+      if (!client || !replaced) return Promise.resolve();
+      var entry = { savedAt: new Date().toISOString(), note: note || '', sheet: replaced };
+      var next = [entry].concat(priceHistory).slice(0, HISTORY_KEEP);
+      return client.from(HCC_SUPABASE.pricingTable)
+        .upsert({ id: 'history', data: { entries: next }, updated_at: new Date().toISOString() })
+        .then(function (r) { if (!(r && r.error)) { priceHistory = next; renderHistory(); } },
+              function () {});
+    }
+
+    $('p-history').addEventListener('change', function () {
+      $('p-restore').disabled = this.value === '';
+    });
+    $('p-restore').addEventListener('click', function () {
+      var i = parseInt($('p-history').value, 10);
+      var e = priceHistory[i];
+      if (!e || !e.sheet) return;
+      pricing = window.HCCPricing.merge(PRICE_DEFAULTS, e.sheet);
+      pricingRender();
+      status('p-status', 'Loaded the sheet saved ' + histLabel(e) +
+        '. Nothing is live until you press Save prices.');
+    });
+
     $('pricing-form').addEventListener('submit', function (e) {
       e.preventDefault(); pricingRead();
       $('p-save').disabled = true; status('p-status', 'Saving\u2026');
@@ -1122,13 +1200,20 @@
         if (s.perSqFt !== undefined) { o.perSqFt = s.perSqFt; o.minutesPerSqFt = s.minutesPerSqFt || 0; }
         payload.services[k] = o;
       });
-      client.from(HCC_SUPABASE.pricingTable).upsert({ id: 'current', data: payload, updated_at: new Date().toISOString() })
-        .then(function (r) {
-          $('p-save').disabled = false;
-          if (r.error) { status('p-status', 'Save failed: ' + r.error.message, 'err'); return; }
-          pricingSaved = JSON.parse(JSON.stringify(pricing));
-          status('p-status', 'Saved. The Quote page uses these prices now.', 'ok');
-        });
+      /* read what is about to be replaced, so it can be put in history */
+      client.from(HCC_SUPABASE.pricingTable).select('data').eq('id', 'current').maybeSingle()
+        .then(function (prev) {
+          var replaced = (prev && prev.data && prev.data.data) ? prev.data.data : null;
+          return client.from(HCC_SUPABASE.pricingTable)
+            .upsert({ id: 'current', data: payload, updated_at: new Date().toISOString() })
+            .then(function (r) {
+              $('p-save').disabled = false;
+              if (r.error) { status('p-status', 'Save failed: ' + r.error.message, 'err'); return; }
+              pricingSaved = JSON.parse(JSON.stringify(pricing));
+              status('p-status', 'Saved. The Quote page uses these prices now.', 'ok');
+              return pushHistory(replaced, 'replaced by a save');
+            });
+        }, function () { $('p-save').disabled = false; status('p-status', 'Save failed.', 'err'); });
     });
     /* v12: the saved sheet overrides everything in the code, so once a sheet
        exists there was no way to pull in a corrected built-in table. This does
