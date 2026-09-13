@@ -1,4 +1,6 @@
-<!-- HCC site — v55 (admin v28, unchanged) — two ways the ambient loop could
+<!-- HCC site — v56 (admin v29) — the ambient loop now plays on iOS. A second
+     encoding, ambient-loop.m4a, is tried first where the browser can decode
+     AAC. See HCC_AUDIO. Previously, v55 (admin v28, unchanged) — two ways the ambient loop could
      silently never start on a phone, both closed. See armSound(). NOT a
      confirmed fix for UserSubmit's report; it could not be reproduced here.
      Previously, v54 (admin v28, unchanged) — Call and Send a text added to the
@@ -93,9 +95,9 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev55.28 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev56.29 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
-     v1=first live deployment, rev55.28=site build plus admin build.
+     v1=first live deployment, rev56.29=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
      v40 (previous, WEB.0): go-live build; introduced the footer tag. -->
 <!DOCTYPE html>
@@ -1289,7 +1291,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev55.28</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev56.29</span>
   </div>
 
   <script src="pricing-core.js"></script>
@@ -2147,14 +2149,25 @@
 
     // v30: ambient sound. src is a loop file shipped next to index.html;
     // Audio.0 supplies it. volume is the level after fade-in (0..1).
-    var HCC_AUDIO = { src: "ambient-loop.ogg", volume: 0.18, fadeSeconds: 2.5 };
+    /* v56: TWO ENCODINGS OF ONE LOOP. Safari on iOS cannot decode Ogg Vorbis
+       through Web Audio, so the site was silent on every iPhone — confirmed on
+       real hardware by UserSubmit. ambient-loop.m4a is the same recording as
+       AAC-LC, delivered by SFX.0 and verified sample-aligned with the .ogg:
+       both decode to exactly 5,556,048 frames.
+
+       The browser says which it can play; the list is tried in that order and
+       a failed download or decode falls through to the next file, because
+       canPlayType() answering "maybe" is not a promise that decodeAudioData()
+       will succeed. m4a is tried first where supported: it is smaller and one
+       lossy generation closer to the source than the .ogg. */
+    var HCC_AUDIO = { srcs: ["ambient-loop.m4a", "ambient-loop.ogg"], volume: 0.18, fadeSeconds: 2.5 };
 
     var snd = {
       btn: document.getElementById('snd'), ctx: null, gain: null, source: null, buffer: null,
       ready: false, started: false, muted: false, armed: false, gestured: false
     };
     (function initSound() {
-      if (!HCC_AUDIO.src) return;
+      if (!HCC_AUDIO.srcs || !HCC_AUDIO.srcs.length) return;
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC || !window.fetch) return;                       // no Web Audio: page stays silent, button stays hidden
       try { snd.muted = localStorage.getItem('hcc_sound') === 'off'; } catch (e) {}
@@ -2163,9 +2176,30 @@
          almost always lands inside that window — under the old order the
          listener did not exist yet, so that tap was thrown away. */
       armSound();
-      fetch(HCC_AUDIO.src)
-        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-        .then(function (ab) { snd.ctx = new AC(); return snd.ctx.decodeAudioData(ab); })
+      var probe = document.createElement('audio');
+      var can = function (t) { try { return !!(probe.canPlayType && probe.canPlayType(t)); } catch (e) { return false; } };
+      var order = HCC_AUDIO.srcs.filter(function (f) {
+        return /\.m4a$/.test(f) ? can('audio/mp4; codecs="mp4a.40.2"') : can('audio/ogg; codecs="vorbis"');
+      });
+      if (!order.length) order = HCC_AUDIO.srcs.slice();   // nothing claimed support: try them all anyway
+      snd.ctx = new AC();
+      /* Older iOS Safari only has the callback form of decodeAudioData and
+         returns nothing, so a bare .then() on it throws. This accepts both. */
+      var decode = function (ab) {
+        return new Promise(function (res, rej) {
+          var r = snd.ctx.decodeAudioData(ab, res, rej);
+          if (r && typeof r.then === 'function') r.then(res, rej);
+        });
+      };
+      var tryFrom = function (i) {
+        if (i >= order.length) return Promise.reject(new Error('no decodable source'));
+        return fetch(order[i])
+          .then(function (r) { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+          .then(decode)
+          .then(function (buf) { snd.src = order[i]; return buf; })
+          .catch(function () { return tryFrom(i + 1); });
+      };
+      tryFrom(0)
         .then(function (buf) {
           // guard the loop seam: a short fade at both ends of the decoded
           // buffer so the join can never click or step. 40 ms is inaudible

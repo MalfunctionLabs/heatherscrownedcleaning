@@ -1,4 +1,8 @@
-<!-- HCC admin — v28 — passes the stamp URL to the printable customer quote;
+<!-- HCC admin — v29 — the Quote sheet tab now redraws when saved prices
+     arrive, so the printable rate card shows Heather's prices rather than the
+     built-ins, and the card scrolls sideways on a phone instead of running off
+     the page. The sheet was edited, so SHEET_TAG moves to rev56.29.5 by hand.
+     Otherwise v28, which passes the stamp URL to the printable customer quote;
      see quote-doc.js v3. Otherwise v27, where every Save began keeping a copy of the sheet it replaced,
      five deep, restorable from a dropdown in the Pricing toolbar. Otherwise
      v26, which did two things. Photos can be ROTATED 90 degrees after
@@ -46,7 +50,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev55.28 — the 28 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev56.29 — the 29 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -371,6 +375,13 @@
     .paper .sf .tag { display: block; margin-top: 5px; text-align: right; font-size: 7px; letter-spacing: .06em; color: #999; }
     /* rate card: one table carrying rate AND minutes, instead of two tables */
     .paper .card td .mins { display: block; font-size: 8.5px; color: #777; margin-top: 1px; }
+    /* v29: seven columns do not fit a phone. On screen the card scrolls
+       sideways inside its own box instead of running off the page; on paper
+       the box is released so nothing is clipped. */
+    .paper .card-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .paper .card { min-width: 560px; }
+    .paper .card td.sqft { text-align: left; }
+    @media print { .paper .card-scroll { overflow: visible; } .paper .card { min-width: 0; } }
     .pagebreak { page-break-before: always; break-before: page; margin-top: 24px; }
     @media (max-width: 600px) { .paper { padding: 20px 16px; } .paper .svcs { grid-template-columns: repeat(2, 1fr); } .paper .cust { grid-template-columns: 1fr; } }
     @media print {
@@ -549,7 +560,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev55.28</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev56.29</span>
     </div>
   </div>
 
@@ -862,7 +873,7 @@
        at a build it was never made against. That happened once, at v49, and
        was caught only because the value was printed back during verification.
        Change this string on its own, deliberately, or not at all. */
-    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev48.23.4';
+    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev56.29.5';
 
     function sheetFooter(today) {
       return '<div class="sf">' +
@@ -912,7 +923,7 @@
       if (withCard) {
         h += '<div class="pagebreak"></div><div class="sheet">' + wm;
         h += '<div class="ph"><div class="biz"><img src="' + SHEET_LOGO + '" alt="" /><div><b>Heather\'s Crowned Cleaning</b><span>Rate card &mdash; for the quote on page 1</span></div></div><div class="qt"><b>Rates</b><span>Per room, per visit, before tax</span></div></div>';
-        h += '<h4>Price per room, with the estimated minutes beneath</h4><table class="card"><tr><th>Service</th>';
+        h += '<h4>Price per room, with the estimated minutes beneath</h4><div class="card-scroll"><table class="card"><tr><th>Service</th>';
         pricing.rooms.forEach(function (r) { h += '<th style="text-align:right">' + esc(r[1]) + '</th>'; });
         h += '</tr>';
         var deals = [];
@@ -921,7 +932,7 @@
           var rd = dealFor(k);
           if (rd.pct) deals.push(sv.name + ' \u2014 ' + rd.pct + '% off' + (rd.why ? ' (' + rd.why + ')' : ''));
           if (sv.perSqFt !== undefined) {
-            h += '<tr><td>' + esc(sv.name) + '</td><td colspan="' + pricing.rooms.length + '">' + money(sv.perSqFt) + ' per square foot' +
+            h += '<tr><td>' + esc(sv.name) + '</td><td class="sqft" colspan="' + pricing.rooms.length + '">' + money(sv.perSqFt) + ' per square foot' +
                  (sv.minutesPerSqFt ? '<span class="mins">about ' + sv.minutesPerSqFt + ' min / sq ft</span>' : '') + '</td></tr>';
           } else {
             h += '<tr><td>' + esc(sv.name) + '</td>';
@@ -932,7 +943,7 @@
             h += '</tr>';
           }
         });
-        h += '</table>';
+        h += '</table></div>';
         if (deals.length) h += '<p class="fine"><b>Discounts, taken off the total:</b> ' + esc(deals.join('  \u00b7  ')) + '</p>';
         h += '<p class="fine">These are the rates saved in the website admin' + (pricingSaved ? '' : ' (starting prices; nothing saved yet)') + '. Change them under the Pricing tab and reprint.</p>';
         h += sheetFooter(today);
@@ -1115,11 +1126,21 @@
       status('p-status', 'Loading\u2026');
       client.from(HCC_SUPABASE.pricingTable).select('data,updated_at').eq('id', 'current').maybeSingle()
         .then(function (r) {
-          if (r.error) { status('p-status', 'Could not load saved prices; showing the starting prices.', 'err'); pricingRender(); return; }
+          if (r.error) { status('p-status', 'Could not load saved prices; showing the starting prices.', 'err'); pricingRender(); sheetRefresh(); return; }
           if (r.data && r.data.data) { pricing = mergePricing(r.data.data); pricingSaved = JSON.parse(JSON.stringify(pricing)); status('p-status', 'Last saved ' + new Date(r.data.updated_at).toLocaleString() + '.'); }
           else { pricingSaved = null; status('p-status', 'Nothing saved yet \u2014 these are the starting prices. Save once to make them yours.'); }
           pricingRender();
+          sheetRefresh();
         });
+    }
+    /* v29: the Quote sheet tab used to draw straight away with the BUILT-IN
+       prices and never redraw when the saved ones arrived — loadPricing() only
+       refreshed the pricing form. So the printable rate card showed the code's
+       prices, not Heather's, and its footnote claimed nothing had been saved.
+       Invisible while the two happened to match; wrong the moment they differ. */
+    function sheetRefresh() {
+      var v = $('view-sheet');
+      if (v && !v.hidden) renderSheet();
     }
     /* v27: PRICE HISTORY. Every Save stores a copy of the sheet it replaced,
        five deep, so a wrong button is recoverable.
