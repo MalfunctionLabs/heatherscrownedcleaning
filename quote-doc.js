@@ -1,4 +1,7 @@
-/* HCC quote document — v3, 2026-09-12, WEBHCC.0
+/* HCC quote document — v4, 2026-09-12, WEBHCC.0
+   v4: openQuote() loads the sheet as a real document instead of writing it
+   into a blank tab, which showed and printed tiny on Android. See openQuote().
+
    ONE definition of the printable quote, shared by index.html (customer's
    "Print this quote") and admin.html (Heather printing a saved quote).
 
@@ -37,9 +40,10 @@
              badge, lineItems: [{label, amount}], totalText, timeEstimate,
              logoSrc, stampSrc }
 
-     stampSrc must be ABSOLUTE. The sheet opens in a blank window written by
-     document.write, so its base URL is about:blank and a relative path
-     resolves to nothing. Callers build it with new URL(..., location.href).
+     stampSrc stays ABSOLUTE. Since v4 the tab gets a <base> pointing at the
+     site, but the old blank-tab fallback still has no base URL, where a
+     relative path resolves to nothing. Callers build it with
+     new URL(..., location.href).
 
      amount may be a number or an already-formatted string; lineItems are
      rendered exactly as given, so the saved copy prints what the customer
@@ -88,11 +92,28 @@
   }
 
   /* Opens the rendered sheet in its own tab. Returns false when the browser
-     blocked the popup, so the caller can say so instead of looking broken. */
+     blocked the popup, so the caller can say so instead of looking broken.
+
+     v4: the sheet is handed to the tab as a real document (a Blob URL), not
+     written into a blank one. On UserSubmit's Android phone the quote showed
+     shrunk into the top-left corner and printed that way: Chrome sizes an
+     about:blank tab before document.write arrives, so the sheet's viewport
+     tag never takes effect. A document loaded by URL has its viewport read on
+     load like any page. <base> points relative paths (the site logo) back at
+     this site, which a Blob URL would otherwise resolve against nothing.
+     The URL is deliberately not revoked: that would break Reload in that tab,
+     and one quote is a few kilobytes. Browsers without Blob URLs keep the old
+     way. Both callers (index.html, admin.html) come through here. */
   function openQuote(data) {
-    var w = window.open('', '_blank');
+    var html = renderQuote(data);
+    if (root.Blob && root.URL && root.URL.createObjectURL) {
+      var base = '<base href="' + esc(root.location.href.split('#')[0]) + '" />';
+      var blob = new root.Blob([html.replace('<head>', '<head>\n' + base)], { type: 'text/html;charset=utf-8' });
+      return !!root.open(root.URL.createObjectURL(blob), '_blank');
+    }
+    var w = root.open('', '_blank');
     if (!w) return false;
-    w.document.write(renderQuote(data));
+    w.document.write(html);
     w.document.close();
     return true;
   }

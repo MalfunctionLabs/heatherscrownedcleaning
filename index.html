@@ -1,4 +1,14 @@
-<!-- HCC site — v58 (admin v30, unchanged) — sound starts from the speaker
+<!-- HCC site — v59 (admin v30, unchanged except its footer tag) — the
+     printable quote no longer shows tiny on a phone. UserSubmit: "quote page
+     print pops the tiniest little view in printer", with an Android screenshot
+     of the quote shrunk into the corner of an about:blank tab. The sheet was
+     written into a blank tab, and Chrome had already sized that tab before
+     the sheet's viewport tag arrived, so it laid out small and printed small.
+     "Print this quote" now opens through quote-doc.js v4, which loads the
+     sheet into the tab as a real document. Admin's Quotes print uses the same
+     opener and gets the same fix. SHEET_TAG untouched: the blank sheet did
+     not change.
+     Previously, v58 (admin v30, unchanged) — sound starts from the speaker
      button only. UserSubmit tested v57 on an iPhone: tapping the page gave no
      sound. Per UserSubmit, "try the specific click method": the button click
      is now the only way to start it, as in the supplied rev56.31 build.
@@ -120,7 +130,7 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev58.30 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev59.30 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
      v1=first live deployment, rev56.29=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
@@ -1316,7 +1326,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev58.30</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev59.30</span>
   </div>
 
   <script src="pricing-core.js"></script>
@@ -1971,12 +1981,11 @@
         logoSrc: document.querySelector('.mark-img').getAttribute('src')
       };
     }
-    function printableQuoteHtml() { return window.HCCQuoteDoc.render(quoteDataFromForm()); }
+    /* v59: opened through quote-doc.js, the same opener admin uses. Writing the
+       sheet into a blank tab here is what shrank it on Android; see openQuote(). */
     function openPrintableQuote() {
       if (!quoteCompute().lines.length) { quoteStatus('Add at least one room or the square feet first.', 'err'); return; }
-      var w = window.open('', '_blank');
-      if (!w) { quoteStatus('Your browser blocked the new tab. Allow pop-ups for this site and try again.', 'err'); return; }
-      w.document.open(); w.document.write(printableQuoteHtml()); w.document.close();
+      if (!window.HCCQuoteDoc.open(quoteDataFromForm())) { quoteStatus('Your browser blocked the new tab. Allow pop-ups for this site and try again.', 'err'); }
     }
     document.getElementById('q-print').addEventListener('click', openPrintableQuote);
 
