@@ -1,4 +1,6 @@
-<!-- HCC admin — v29 — the Quote sheet tab now redraws when saved prices
+<!-- HCC admin — v30 — page one of the blank quote no longer runs off a phone
+     screen; v29 had fixed only the rate card. SHEET_TAG to rev56.30.6 by hand.
+     Otherwise v29, where the Quote sheet tab began redrawing when saved prices
      arrive, so the printable rate card shows Heather's prices rather than the
      built-ins, and the card scrolls sideways on a phone instead of running off
      the page. The sheet was edited, so SHEET_TAG moves to rev56.29.5 by hand.
@@ -50,7 +52,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev56.29 — the 29 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev56.30 — the 30 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -381,6 +383,32 @@
     .paper .card-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .paper .card { min-width: 560px; }
     .paper .card td.sqft { text-align: left; }
+    /* v30: PAGE ONE ON A PHONE. v29 fixed the rate card and left page one
+       running off the same edge. Measured at 375px before touching anything,
+       two causes, nothing else:
+         - the Quote / Date / Quote no. block was held at 110px by fixed
+           min-widths on its blank lines (set inline in renderSheet), and the
+           header row could not wrap, so it sat 61px past the paper's edge
+         - "Quoted by" / "Valid until" were two columns of 130px-minimum
+           lines, 52px over
+       Screen only. On paper the page is wide enough and must not reflow. The
+       !important is needed because the header's widths are inline styles,
+       which a stylesheet rule cannot otherwise beat. */
+    @media screen and (max-width: 600px) {
+      .paper .ph { flex-wrap: wrap; row-gap: 10px; }
+      .paper .ph .biz { min-width: 0; }
+      .paper .ph .biz span { overflow-wrap: anywhere; }
+      .paper .ph .qt { width: 100%; text-align: left; }
+      .paper .ph .qt > span { display: flex; gap: 8px; align-items: flex-end; }
+      .paper .line { min-width: 0 !important; flex: 1; }
+      .paper .sig { grid-template-columns: 1fr; gap: 10px; }
+      /* The rest of the sideways scroll was never the paper. The tab row is
+         five buttons that could not wrap: 427px of buttons in a 330px row,
+         Quotes 74px off the screen. Four tabs fit a phone; admin v11 added
+         Quotes as the fifth and nobody checked a phone. That was this chair.
+         Tabs are screen furniture and already hidden in print. */
+      .tabs { flex-wrap: wrap; }
+    }
     @media print { .paper .card-scroll { overflow: visible; } .paper .card { min-width: 0; } }
     .pagebreak { page-break-before: always; break-before: page; margin-top: 24px; }
     @media (max-width: 600px) { .paper { padding: 20px 16px; } .paper .svcs { grid-template-columns: repeat(2, 1fr); } .paper .cust { grid-template-columns: 1fr; } }
@@ -560,7 +588,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev56.29</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev56.30</span>
     </div>
   </div>
 
@@ -873,7 +901,7 @@
        at a build it was never made against. That happened once, at v49, and
        was caught only because the value was printed back during verification.
        Change this string on its own, deliberately, or not at all. */
-    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev56.29.5';
+    var SHEET_TAG = 'ML.WD.WEBHCC-v1,rev56.30.6';
 
     function sheetFooter(today) {
       return '<div class="sf">' +
