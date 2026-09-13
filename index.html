@@ -1,4 +1,6 @@
-<!-- HCC site — v60 (admin v32) — site content unchanged. Footer tag to
+<!-- HCC site — v60 (admin v33) — site content unchanged. Footer tag to
+     rev60.33 for admin v33 (invoice WO numbers made automatically).
+     Previously, v60 (admin v32) — site content unchanged. Footer tag to
      rev60.32 for admin v32 (Customers and Invoices tabs), and quote-doc.js
      loads as ?v=60.32 because that file changed (v5: its tab opener is shared
      with the new printable invoice; what the customer's Print does is the same).
@@ -141,7 +143,7 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev60.32 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev60.33 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
      v1=first live deployment, rev56.29=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
@@ -1337,7 +1339,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev60.32</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev60.33</span>
   </div>
 
   <!-- ?v= changes on every deploy that changes these files, so a browser never
