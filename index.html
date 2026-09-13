@@ -1,4 +1,17 @@
-<!-- HCC site — v56 (admin v30; site content unchanged since v56) — the ambient loop now plays on iOS. A second
+<!-- HCC site — v57 (admin v30, unchanged) — iPhone sound, properly this time.
+     Sound starts OFF on every visit and the first tap or click anywhere on the
+     page turns it on, per UserSubmit. The audio context is created and resumed
+     synchronously INSIDE that tap, which is what Safari actually requires. v55
+     and v56 remembered an earlier tap and resumed later, outside any gesture,
+     and iOS refused. It listens for click and touchend, not touchstart or
+     pointerdown, which iOS does not accept as permission to play. The page-wide
+     listeners remove themselves once sound is running or the visitor mutes, and
+     the speaker button's label changes only after playback actually starts.
+     The core of this fix came from an outside review and a supplied rev56.31
+     build. Its button-only start was replaced with tap-anywhere on UserSubmit's
+     call, and the build history it had condensed is restored below.
+     PENDING A REAL IPHONE TEST.
+     Previously, v56 (admin v30; site content unchanged since v56) — the ambient loop now plays on iOS. A second
      encoding, ambient-loop.m4a, is tried first where the browser can decode
      AAC. See HCC_AUDIO. Previously, v55 (admin v28, unchanged) — two ways the ambient loop could
      silently never start on a phone, both closed. See armSound(). NOT a
@@ -95,7 +108,7 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev56.30 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev57.30 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
      v1=first live deployment, rev56.29=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
@@ -1291,7 +1304,7 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev56.30</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev57.30</span>
   </div>
 
   <script src="pricing-core.js"></script>
@@ -2164,25 +2177,29 @@
 
     var snd = {
       btn: document.getElementById('snd'), ctx: null, gain: null, source: null, buffer: null,
-      ready: false, started: false, muted: false, armed: false, gestured: false
+      ready: false, started: false, muted: true, starting: false, loading: false, loadPromise: null
     };
+    var HCCAudioContext = window.AudioContext || window.webkitAudioContext;
     (function initSound() {
       if (!HCC_AUDIO.srcs || !HCC_AUDIO.srcs.length) return;
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC || !window.fetch) return;                       // no Web Audio: page stays silent, button stays hidden
-      try { snd.muted = localStorage.getItem('hcc_sound') === 'off'; } catch (e) {}
-      /* v55: arm the gesture listener NOW, not after the download.
-         The loop is 1.3 MB. On a phone that takes seconds, and the first tap
-         almost always lands inside that window — under the old order the
-         listener did not exist yet, so that tap was thrown away. */
-      armSound();
+      if (!HCCAudioContext || !window.fetch) return;          // no Web Audio: page stays silent, button stays hidden
+      /* Sound begins OFF on every visit, and nothing is remembered between
+         visits, per UserSubmit. The first tap or click anywhere turns it on.
+         See requestSound() for why that tap must do the unlocking itself. */
+      snd.btn.hidden = false;
+      paintSound();
+      armTapAnywhere();
+    })();
+
+    function loadSound() {
+      if (snd.loadPromise) return snd.loadPromise;
+      snd.loading = true;
       var probe = document.createElement('audio');
       var can = function (t) { try { return !!(probe.canPlayType && probe.canPlayType(t)); } catch (e) { return false; } };
       var order = HCC_AUDIO.srcs.filter(function (f) {
         return /\.m4a$/.test(f) ? can('audio/mp4; codecs="mp4a.40.2"') : can('audio/ogg; codecs="vorbis"');
       });
       if (!order.length) order = HCC_AUDIO.srcs.slice();   // nothing claimed support: try them all anyway
-      snd.ctx = new AC();
       /* Older iOS Safari only has the callback form of decodeAudioData and
          returns nothing, so a bare .then() on it throws. This accepts both. */
       var decode = function (ab) {
@@ -2199,7 +2216,7 @@
           .then(function (buf) { snd.src = order[i]; return buf; })
           .catch(function () { return tryFrom(i + 1); });
       };
-      tryFrom(0)
+      snd.loadPromise = tryFrom(0)
         .then(function (buf) {
           // guard the loop seam: a short fade at both ends of the decoded
           // buffer so the join can never click or step. 40 ms is inaudible
@@ -2231,12 +2248,16 @@
           } catch (e) {}
           snd.buffer = buf; snd.ready = true;
           snd.gain = snd.ctx.createGain(); snd.gain.gain.value = 0; snd.gain.connect(snd.ctx.destination);
-          snd.btn.hidden = false;
-          paintSound();
-          if (!snd.muted) soundOn();          // a gesture may already have happened while this downloaded
+          snd.loading = false;
+          return buf;
         })
-        .catch(function () { /* missing or undecodable file: no button, no sound */ });
-    })();
+        .catch(function (err) {
+          snd.loading = false; snd.loadPromise = null; snd.muted = true; paintSound();
+          if (window.console && console.warn) console.warn('HCC sound could not load:', err);
+          throw err;
+        });
+      return snd.loadPromise;
+    }
     function startLoop() {
       if (snd.started || !snd.ready) return;
       snd.source = snd.ctx.createBufferSource();
@@ -2245,13 +2266,11 @@
       snd.started = true;
     }
     function soundOn() {
-      /* Called from three places now: the arming gesture, the button, and the
-         moment the buffer finishes decoding. Any of them can be the first, so
-         it has to be safe to call early and safe to call twice. */
-      if (!snd.ready || !snd.ctx) return;
-      if (!snd.gestured && snd.ctx.state !== 'running') return;   // nothing to do yet; the gesture will come back here
+      /* Called once the context is unlocked and the loop has loaded, and again
+         when a hidden tab comes back. Safe to call twice. */
+      if (!snd.ready || !snd.ctx || snd.muted) return;
       var go = function () {
-        if (snd.ctx.state !== 'running') return;                  // resume did not take; stay armed for the next gesture
+        if (snd.ctx.state !== 'running') return;                  // context not running: nothing to fade in
         startLoop();
         var now = snd.ctx.currentTime;
         snd.gain.gain.cancelScheduledValues(now);
@@ -2271,35 +2290,67 @@
       snd.btn.setAttribute('aria-pressed', snd.muted ? 'false' : 'true');
       snd.btn.setAttribute('aria-label', snd.muted ? 'Turn sound on' : 'Turn sound off');
     }
-    /* Browsers only allow sound after a user gesture.
-
-       v55: this used to unhook itself on the FIRST gesture and call soundOn()
-       once. Two ways that lost the sound on a phone, both silent:
-
-         - the listener was attached only after the file had downloaded and
-           decoded, so a tap during loading hit nothing
-         - if resume() did not take on that one attempt, the listeners were
-           already gone and nothing tried again
-
-       Now it arms immediately, remembers that a gesture happened, and stays
-       armed until audio is genuinely running. */
-    function armSound() {
-      if (snd.armed) return; snd.armed = true;
-      var onGesture = function () {
-        snd.gestured = true;
-        if (!snd.muted) soundOn();
-        if (snd.ctx && snd.ctx.state === 'running' && snd.started) {
-          ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.removeEventListener(ev, onGesture, true); });
-        }
-      };
-      ['pointerdown', 'keydown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, onGesture, true); });
+    /* v57: ONE ROUTE TO SOUND, called synchronously from a real user gesture.
+       Creating and resuming the audio context must happen inside the tap
+       itself; a promise that resolves later is outside the gesture and iOS
+       refuses it. So nothing here waits before calling resume(). The file can
+       finish downloading afterwards, because by then the context is unlocked.
+       The button label flips only once playback has really started, so it never
+       claims sound that is not playing. A failed attempt leaves the page armed,
+       so the next tap simply tries again. */
+    function requestSound() {
+      if (!snd.muted || snd.starting) return;
+      try {
+        if (!snd.ctx || snd.ctx.state === 'closed') snd.ctx = new HCCAudioContext();
+      } catch (err) {
+        if (window.console && console.warn) console.warn('HCC sound could not start:', err);
+        return;
+      }
+      snd.starting = true;
+      var unlock = snd.ctx.state === 'running' ? Promise.resolve() : snd.ctx.resume();
+      unlock.then(function () {
+        if (snd.ctx.state !== 'running') throw new Error('AudioContext remained ' + snd.ctx.state);
+        return loadSound();
+      }).then(function () {
+        snd.starting = false;
+        snd.muted = false; paintSound();
+        soundOn();
+        disarmTapAnywhere();
+      }).catch(function (err) {
+        snd.starting = false;
+        if (window.console && console.warn) console.warn('HCC sound could not start:', err);
+      });
     }
+
+    /* v57: TAP OR CLICK ANYWHERE starts sound, per UserSubmit. Only click and
+       touchend: iOS does not treat touchstart or pointerdown as permission to
+       play, which is one reason v55 never worked on an iPhone. touchend is kept
+       because iOS does not fire click on plain, non-interactive parts of a page.
+       A press on the speaker button is left to the button. Capture phase, never
+       preventDefault, and removed the moment sound runs or the visitor mutes, so
+       it is not a listener that sits on every tap for the whole visit. The event
+       lists are written out in each function rather than held in a variable,
+       because armTapAnywhere() is called from initSound() above, before a var
+       declared down here would have been assigned. */
+    function onTapAnywhere(e) {
+      if (snd.btn && e.target && snd.btn.contains(e.target)) return;
+      requestSound();
+    }
+    function armTapAnywhere() {
+      ['click', 'touchend'].forEach(function (ev) { document.addEventListener(ev, onTapAnywhere, true); });
+    }
+    function disarmTapAnywhere() {
+      ['click', 'touchend'].forEach(function (ev) { document.removeEventListener(ev, onTapAnywhere, true); });
+    }
+
     snd.btn.addEventListener('click', function () {
-      snd.gestured = true;                 // pressing it IS the user gesture
-      snd.muted = !snd.muted;
-      try { localStorage.setItem('hcc_sound', snd.muted ? 'off' : 'on'); } catch (e) {}
-      paintSound();
-      if (snd.muted) soundOff(); else soundOn();
+      if (!snd.muted) {
+        snd.muted = true; paintSound(); soundOff();
+        disarmTapAnywhere();              // an explicit "off" must not be undone by the next stray tap
+        return;
+      }
+      if (snd.starting) return;           // already on its way from an earlier tap
+      requestSound();
     });
     // background tab: ease out; back: ease in (unless muted)
     document.addEventListener('visibilitychange', function () {
