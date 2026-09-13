@@ -1,4 +1,18 @@
-<!-- HCC admin — v31 — pricing-core.js and quote-doc.js load with ?v=60, so a
+<!-- HCC admin — v32 — two new tabs, per UserSubmit.
+     CUSTOMERS: each customer gets an HCC-#### number (HCC-0001 up), handed
+     out by the database so two saves can never share one. Bring one in from
+     a quote (Quotes tab: Make customer, or the picker at the top), or add by
+     hand. Name, phone, email, street address, city, notes, all editable.
+     INVOICES: numbered INV.HCC.#### the same way. Quote #, WO #, customer ID,
+     service and due dates, bill-to copied from the customer (a copy, so an
+     old invoice keeps saying what it said), service lines picked from the
+     current prices or typed, every line editable, discount (% or $ with a
+     reason), optional tax %, Unpaid / Paid / Void, payment method, paid-on
+     date, notes. Prints through invoice-doc.js with its own frozen
+     INVOICE_TAG (same rule as SHEET_TAG). Needs HCC_supabase_setup_v7.sql run
+     in Supabase; until then both tabs say so instead of failing silently.
+     SHEET_TAG untouched: the blank quote sheet did not change.
+     Otherwise v31 — pricing-core.js and quote-doc.js load with ?v=60, so a
      cached older copy is never run against this page; see site v60. Quotes
      tab printing also picks up quote-doc.js v4 (opens full size on phones).
      SHEET_TAG untouched: the blank sheet did not change.
@@ -56,7 +70,7 @@
      newest first, with Print, a status, and delete. Prints via quote-doc.js,
      the same definition the public site uses. Otherwise v10, which fixed the
      wide-screen layout collapse (see .wrap
-     below); public footer tag reads ML.WD.WEBHCC-v1,rev60.31 — the 31 is this
+     below); public footer tag reads ML.WD.WEBHCC-v1,rev60.32 — the 32 is this
      file. Otherwise v9, first build under WEBHCC.0: Supabase connected (project URL
      and anon public key filled in; must stay byte-identical to the HCC_SUPABASE
      block in index.html). Live footer tag on the public site reads
@@ -169,6 +183,38 @@
     .qz-field b { display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 1px; }
     .qz-del { margin-left: auto; background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline; }
     .qz-del:hover { color: var(--ivory); }
+    /* v32: customers + invoices */
+    .tabs { flex-wrap: wrap; }
+    .f-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 10px; }
+    .f-grid label { margin: 0 0 4px; font-size: 11px; }
+    .f-grid .span2 { grid-column: span 2; }
+    .f-grid .span4 { grid-column: 1 / -1; }
+    @media (max-width: 480px) { .f-grid { grid-template-columns: 1fr; } .f-grid .span2 { grid-column: auto; } }
+    @media (min-width: 900px) { body.is-wide .f-grid { grid-template-columns: repeat(4, 1fr); } }
+    .p-field[type=date], select.p-field { color-scheme: dark; }
+    .iv-h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--taupe); margin: 24px 0 8px; }
+    .iv-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .iv-no { font-weight: 800; font-size: 18px; }
+    .iv-head .btn { margin-top: 0; padding: 8px 14px; font-size: 13px; }
+    .iv-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .iv-add select { width: auto; flex: 1 1 180px; }
+    .iv-add .btn { margin-top: 0; padding: 9px 14px; font-size: 13px; }
+    .iv-lines-wrap { overflow-x: auto; }
+    .iv-lines { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 13px; }
+    .iv-lines th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0 6px 6px 0; }
+    .iv-lines td { padding: 3px 6px 3px 0; vertical-align: middle; }
+    .iv-lines .p-field { padding: 7px 8px; font-size: 14px; }
+    .iv-lines td.n { width: 76px; }
+    .iv-lines td.r { width: 96px; }
+    .iv-lines .amt { width: 96px; text-align: right; white-space: nowrap; font-weight: 700; }
+    .iv-x { background: none; border: 0; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .iv-x:hover { color: var(--ivory); }
+    .iv-empty td { color: var(--muted); padding: 10px 0; }
+    .iv-sums { max-width: 380px; margin: 14px 0 0 auto; }
+    .iv-chip { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--taupe); color: var(--taupe); white-space: nowrap; }
+    .iv-chip.paid { background: var(--taupe); color: var(--charcoal); }
+    .iv-chip.void { border-color: #c98b84; color: #c98b84; }
+    .iv-chip.late { border-color: #d9a6a0; color: #d9a6a0; }
     .item { margin: 0; border: 1px solid rgba(156,139,118,.25); border-radius: 10px; overflow: hidden; background: rgba(248,245,239,.03); }
     .item .pics { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
     .item .pics div { position: relative; aspect-ratio: 1 / 1; }
@@ -464,6 +510,8 @@
         <button type="button" id="tab-sheet" role="tab" aria-selected="false">Quote sheet</button>
         <button type="button" id="tab-reviews" role="tab" aria-selected="false">Reviews</button>
         <button type="button" id="tab-quotes" role="tab" aria-selected="false">Quotes</button>
+        <button type="button" id="tab-customers" role="tab" aria-selected="false">Customers</button>
+        <button type="button" id="tab-invoices" role="tab" aria-selected="false">Invoices</button>
       </div>
 
       <div id="view-gallery">
@@ -576,6 +624,89 @@
         <p class="status" id="rev-list-status">Loading&hellip;</p>
         <div class="list" id="rev-list"></div>
       </div>
+
+      <div id="view-customers" hidden>
+        <h1>Customers.</h1>
+        <p class="sub">Everyone Heather works for, each with an HCC number. Bring one in from a quote, or add them by hand.</p>
+        <form id="cu-form" autocomplete="off">
+          <label for="cu-quote">Start from a quote (optional)</label>
+          <select id="cu-quote" class="p-field"><option value="">Pick a quote…</option></select>
+          <div class="f-grid" style="margin-top:14px;">
+            <div class="span2"><label for="cu-name">Name</label><input id="cu-name" class="p-field" type="text" /></div>
+            <div><label for="cu-phone">Phone</label><input id="cu-phone" class="p-field" type="tel" /></div>
+            <div><label for="cu-email">Email</label><input id="cu-email" class="p-field" type="email" /></div>
+            <div class="span2"><label for="cu-address">Street address</label><input id="cu-address" class="p-field" type="text" /></div>
+            <div class="span2"><label for="cu-city">City</label><input id="cu-city" class="p-field" type="text" /></div>
+          </div>
+          <label for="cu-notes">Notes</label>
+          <textarea id="cu-notes" class="p-field" placeholder="Gate code, pets, parking, what they like done first…"></textarea>
+          <p class="hint" id="cu-dupe"></p>
+          <button class="btn" type="submit" id="cu-save">Add customer</button>
+          <button class="btn btn-quiet" type="button" id="cu-clear" style="margin-left:8px;">Clear</button>
+          <p class="status" id="cu-status"></p>
+        </form>
+        <hr class="rule" />
+        <h2>Your customers</h2>
+        <input id="cu-search" class="p-field" type="search" placeholder="Search name, HCC number, phone, email, city" style="margin-bottom:10px;" />
+        <p class="status" id="cu-list-status">Loading&hellip;</p>
+        <div class="list" id="cu-list"></div>
+      </div>
+
+      <div id="view-invoices" hidden>
+        <h1>Invoices.</h1>
+        <p class="sub">Pick the customer, add what was done, and print. The invoice number is handed out when you save.</p>
+        <form id="iv-form" autocomplete="off">
+          <div class="iv-head"><span class="iv-no" id="iv-no">New invoice</span><button class="btn btn-quiet" type="button" id="iv-new">Start a new one</button></div>
+          <div class="f-grid">
+            <div class="span2"><label for="iv-customer">Customer</label><select id="iv-customer" class="p-field"><option value="">Pick a customer…</option></select></div>
+            <div><label for="iv-custno">Customer ID</label><input id="iv-custno" class="p-field" type="text" placeholder="HCC-0001" /></div>
+            <div><label for="iv-quote">Quote #</label><input id="iv-quote" class="p-field" type="text" list="iv-quotes" placeholder="HCC-XXXXXX" /><datalist id="iv-quotes"></datalist></div>
+            <div><label for="iv-wo">WO #</label><input id="iv-wo" class="p-field" type="text" /></div>
+            <div><label for="iv-sdate">Service date</label><input id="iv-sdate" class="p-field" type="date" /></div>
+            <div><label for="iv-due">Due date</label><input id="iv-due" class="p-field" type="date" /></div>
+          </div>
+          <h3 class="iv-h">Bill to</h3>
+          <div class="f-grid">
+            <div class="span2"><label for="iv-bname">Name</label><input id="iv-bname" class="p-field" type="text" /></div>
+            <div><label for="iv-bphone">Phone</label><input id="iv-bphone" class="p-field" type="tel" /></div>
+            <div><label for="iv-bemail">Email</label><input id="iv-bemail" class="p-field" type="email" /></div>
+            <div class="span4"><label for="iv-baddr">Address</label><textarea id="iv-baddr" class="p-field" rows="2" style="min-height:0;"></textarea></div>
+          </div>
+          <h3 class="iv-h">Services received</h3>
+          <div class="iv-add">
+            <select id="iv-svc" class="p-field" aria-label="Service"></select>
+            <select id="iv-item" class="p-field" aria-label="Which part"></select>
+            <button class="btn btn-quiet" type="button" id="iv-add">Add line</button>
+            <button class="btn btn-quiet" type="button" id="iv-blank">Blank line</button>
+            <button class="btn btn-quiet" type="button" id="iv-fromquote">Copy lines from the quote</button>
+          </div>
+          <div class="iv-lines-wrap"><table class="iv-lines"><thead><tr><th>Description</th><th>Qty</th><th>Rate $</th><th class="amt">Amount</th><th></th></tr></thead><tbody id="iv-lines"></tbody></table></div>
+          <div class="f-grid" style="margin-top:14px;">
+            <div><label for="iv-dtype">Discount</label><select id="iv-dtype" class="p-field"><option value="none">None</option><option value="percent">Percent %</option><option value="amount">Dollars $</option></select></div>
+            <div><label for="iv-dval">Discount amount</label><input id="iv-dval" class="p-field" type="text" inputmode="decimal" /></div>
+            <div class="span2"><label for="iv-dnote">What the discount is for</label><input id="iv-dnote" class="p-field" type="text" /></div>
+            <div><label for="iv-tax">Tax %</label><input id="iv-tax" class="p-field" type="text" inputmode="decimal" placeholder="0" /></div>
+          </div>
+          <table class="qz-table iv-sums" id="iv-sums"></table>
+          <h3 class="iv-h">Payment</h3>
+          <div class="f-grid">
+            <div><label for="iv-state">Status</label><select id="iv-state" class="p-field"><option value="unpaid">Unpaid</option><option value="paid">Paid</option><option value="void">Void</option></select></div>
+            <div><label for="iv-method">Paid by</label><select id="iv-method" class="p-field"><option value="">—</option><option>Cash</option><option>Check</option><option>Venmo</option><option>Zelle</option><option>Card</option><option>Other</option></select></div>
+            <div><label for="iv-paidon">Paid on</label><input id="iv-paidon" class="p-field" type="date" /></div>
+            <div><label for="iv-pnote">Payment note</label><input id="iv-pnote" class="p-field" type="text" placeholder="Check number, reference…" /></div>
+          </div>
+          <label for="iv-notes">Notes printed on the invoice</label>
+          <textarea id="iv-notes" class="p-field"></textarea>
+          <button class="btn" type="submit" id="iv-save">Save invoice</button>
+          <button class="btn btn-quiet" type="button" id="iv-print" style="margin-left:8px;">Save and print</button>
+          <p class="status" id="iv-status"></p>
+        </form>
+        <hr class="rule" />
+        <h2>Your invoices</h2>
+        <select id="iv-filter" class="p-field" aria-label="Show" style="max-width:220px;margin-bottom:10px;"><option value="all">All invoices</option><option value="unpaid">Unpaid</option><option value="paid">Paid</option><option value="void">Void</option></select>
+        <p class="status" id="iv-list-status">Loading&hellip;</p>
+        <div class="list" id="iv-list"></div>
+      </div>
     </section>
 
     <div class="foot">
@@ -592,7 +723,7 @@
         <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
       </div>
       <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev60.31</span>
+      <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev60.32</span>
     </div>
   </div>
 
@@ -605,7 +736,8 @@
   <!-- ?v= changes on every deploy that changes these files, so a browser never
        runs a cached older copy against a newer page (admin v31). -->
   <script src="pricing-core.js?v=60"></script>
-  <script src="quote-doc.js?v=60"></script>
+  <script src="quote-doc.js?v=60.32"></script>
+  <script src="invoice-doc.js?v=60.32"></script>
   <script>
     // Same two values as index.html. Anon key is public by design; the
     // service key must never go here.
@@ -616,7 +748,9 @@
       table: "gallery_pairs",
       pricingTable: "pricing",
       reviewsTable: "reviews",
-      quotesTable: "quotes"
+      quotesTable: "quotes",
+      customersTable: "customers",   // v32, setup v7
+      invoicesTable: "invoices"      // v32, setup v7
     };
     var MAX_EDGE = 1600;
     var JPEG_Q = 0.85;
@@ -721,7 +855,9 @@
         .then(function (res) {
           if (res.error) { qzStatus('Quotes could not load: ' + res.error.message); return; }
           quotesRows = res.data || [];
+          quotesLoaded = true;
           renderQuotes();
+          fillQuotePickers();
         }, function () { qzStatus('Quotes could not load.'); });
     }
 
@@ -789,6 +925,8 @@
           '</div>' +
           '<div class="qz-acts">' +
             '<button class="btn" type="button" data-act="print">Print</button>' +
+            '<button class="btn btn-quiet" type="button" data-act="customer">Make customer</button>' +
+            '<button class="btn btn-quiet" type="button" data-act="invoice">Invoice it</button>' +
             '<select data-act="status" aria-label="Status">' + opts + '</select>' +
             '<button class="qz-del" type="button" data-act="delete">Delete</button>' +
           '</div></div>' +
@@ -847,6 +985,24 @@
       var card = btn.closest('.qz'), id = card.getAttribute('data-id'), row = qzRowById(id);
       if (!row) return;
 
+      /* v32: a quote can become a customer, or an invoice, in one press. */
+      if (btn.getAttribute('data-act') === 'customer') {
+        showTab('customers');
+        ensureCustomers(function () { cuFillFromQuote(row); $('cu-form').scrollIntoView({ block: 'start' }); });
+        return;
+      }
+      if (btn.getAttribute('data-act') === 'invoice') {
+        showTab('invoices');
+        ensureCustomers(function () {
+          ivNew();
+          ivFromQuote(row);
+          var c = customerForQuote(row);
+          if (c) ivPickCustomer(c.id);
+          status('iv-status', 'Started from quote ' + row.ref + (c ? ' for ' + fmtCust(c) : ', no matching customer yet') + '. Check the lines, then save.');
+        });
+        return;
+      }
+
       if (btn.getAttribute('data-act') === 'print') {
         if (!window.HCCQuoteDoc) { qzStatus('The quote sheet did not load. Reload the page and try again.'); return; }
         if (!window.HCCQuoteDoc.open(qzToDoc(row))) qzStatus('Your browser blocked the new tab. Allow pop-ups for this site, then press Print again.');
@@ -864,6 +1020,574 @@
       }
     });
 
+    /* v32: CUSTOMERS and INVOICES. Both tables are signed-in only for every
+       operation (setup v7); the public site never reads or writes them.
+       Numbers come from the database (cust_no, inv_no) and are only formatted
+       here, by invoice-doc.js. Money is worked out by HCCInvoice.compute() and
+       nowhere else, so the editor, the list and the paper always agree. */
+    var customersRows = [], customersLoaded = false;
+    var invoicesRows = [], invoicesLoaded = false;
+    var quotesLoaded = false;
+    var cuFromRef = '';
+    var ivEditing = null;   // the saved invoice being edited, or null for a new one
+    var ivLines = [];       // [{label, qty, rate}] exactly as typed
+
+    function tablesMsg(err) {
+      var m = (err && err.message) || String(err || '');
+      return /schema cache|does not exist/i.test(m)
+        ? 'the customers and invoices tables are not set up yet. Run HCC_supabase_setup_v7.sql in Supabase (SQL Editor), then reload this page.'
+        : m;
+    }
+    function todayISO() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+    function digits(s) { return String(s || '').replace(/\D/g, ''); }
+    function fmtCust(c) { return window.HCCInvoice.custNo(c && c.cust_no); }
+    function dayOf(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+
+    function ensureQuotes(cb) {
+      if (quotesLoaded || !client) { cb(); return; }
+      client.from(HCC_SUPABASE.quotesTable)
+        .select('id,ref,customer_name,customer_email,customer_phone,customer_area,customer_notes,service_name,service_badge,line_items,total_display,time_estimate,status,created_at')
+        .order('created_at', { ascending: false }).limit(300)
+        .then(function (res) { if (!res.error) { quotesRows = res.data || []; quotesLoaded = true; } cb(); }, function () { cb(); });
+    }
+    function fillQuotePickers() {
+      var keep = $('cu-quote').value;
+      $('cu-quote').innerHTML = '<option value="">Pick a quote…</option>' + quotesRows.map(function (r) {
+        return '<option value="' + esc(r.id) + '">' + esc((r.customer_name || 'No name') + ' · ' + r.ref + ' · ' + dayOf(r.created_at)) + '</option>';
+      }).join('');
+      $('cu-quote').value = keep;
+      $('iv-quotes').innerHTML = quotesRows.map(function (r) {
+        return '<option value="' + esc(r.ref) + '">' + esc(r.customer_name || '') + '</option>';
+      }).join('');
+    }
+
+    // ---- customers ----------------------------------------------------
+    function loadCustomers(cb) {
+      if (!client) { if (cb) cb(false); return; }
+      status('cu-list-status', 'Loading\u2026');
+      client.from(HCC_SUPABASE.customersTable).select('*').order('cust_no', { ascending: false }).limit(2000)
+        .then(function (res) {
+          if (res.error) {
+            status('cu-list-status', 'Customers could not load: ' + tablesMsg(res.error), 'err');
+            if (cb) cb(false); return;
+          }
+          customersRows = res.data || []; customersLoaded = true;
+          renderCustomers(); fillCustomerSelect();
+          if (cb) cb(true);
+        }, function () { status('cu-list-status', 'Customers could not load.', 'err'); if (cb) cb(false); });
+    }
+    function ensureCustomers(cb) { if (customersLoaded) cb(true); else loadCustomers(cb); }
+    function customerById(id) {
+      for (var i = 0; i < customersRows.length; i++) if (customersRows[i].id === id) return customersRows[i];
+      return null;
+    }
+    function customerForQuote(q) {
+      var e = String(q.customer_email || '').trim().toLowerCase();
+      for (var i = 0; i < customersRows.length; i++) if (q.ref && customersRows[i].source_quote_ref === q.ref) return customersRows[i];
+      if (e) for (var j = 0; j < customersRows.length; j++) if (String(customersRows[j].email || '').trim().toLowerCase() === e) return customersRows[j];
+      return null;
+    }
+
+    var CU_FIELDS = ['name', 'phone', 'email', 'address', 'city', 'notes'];
+    function cuClear() {
+      CU_FIELDS.forEach(function (f) { $('cu-' + f).value = ''; });
+      cuFromRef = ''; $('cu-quote').value = ''; $('cu-dupe').textContent = '';
+    }
+    function cuFillFromQuote(q) {
+      cuClear();
+      $('cu-name').value = q.customer_name || '';
+      $('cu-phone').value = q.customer_phone || '';
+      $('cu-email').value = q.customer_email || '';
+      $('cu-city').value = q.customer_area || '';
+      $('cu-notes').value = q.customer_notes || '';
+      cuFromRef = q.ref || '';
+      $('cu-quote').value = q.id;
+      cuDupeCheck();
+      status('cu-status', 'Filled in from quote ' + q.ref + '. Add the street address, check it over, then press Add customer.');
+    }
+    /* Not a block, a heads-up: two customers can share a last name or a phone. */
+    function findDupe(name, email, phone) {
+      var e = String(email || '').trim().toLowerCase(), p = digits(phone).slice(-10), n = String(name || '').trim().toLowerCase();
+      for (var i = 0; i < customersRows.length; i++) {
+        var c = customersRows[i];
+        if (e && String(c.email || '').trim().toLowerCase() === e) return { c: c, why: 'email' };
+        if (p.length >= 7 && digits(c.phone).slice(-10) === p) return { c: c, why: 'phone number' };
+        if (n && String(c.name || '').trim().toLowerCase() === n) return { c: c, why: 'name' };
+      }
+      return null;
+    }
+    function cuDupeCheck() {
+      var d = findDupe($('cu-name').value, $('cu-email').value, $('cu-phone').value);
+      $('cu-dupe').textContent = d ? 'Heads up: ' + fmtCust(d.c) + ' ' + (d.c.name || '') + ' already has this ' + d.why + '.' : '';
+    }
+    ['name', 'email', 'phone'].forEach(function (f) { $('cu-' + f).addEventListener('input', cuDupeCheck); });
+    $('cu-quote').addEventListener('change', function () {
+      var q = qzRowById(this.value);
+      if (q) cuFillFromQuote(q); else { cuFromRef = ''; status('cu-status', ''); }
+    });
+    $('cu-clear').addEventListener('click', function () { cuClear(); status('cu-status', ''); });
+    $('cu-search').addEventListener('input', renderCustomers);
+
+    $('cu-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var row = {};
+      CU_FIELDS.forEach(function (f) { row[f] = $('cu-' + f).value.trim(); });
+      row.source_quote_ref = cuFromRef;
+      if (!row.name) { status('cu-status', 'Give the customer a name first.', 'err'); return; }
+      $('cu-save').disabled = true; status('cu-status', 'Saving\u2026');
+      client.from(HCC_SUPABASE.customersTable).insert(row).select().single()
+        .then(function (res) {
+          $('cu-save').disabled = false;
+          if (res.error) { status('cu-status', 'Could not save: ' + tablesMsg(res.error), 'err'); return; }
+          customersRows.unshift(res.data); customersLoaded = true;
+          renderCustomers(); fillCustomerSelect(); cuClear();
+          status('cu-status', 'Saved as ' + fmtCust(res.data) + '.', 'ok');
+        }, function () { $('cu-save').disabled = false; status('cu-status', 'Could not save.', 'err'); });
+    });
+
+    function renderCustomers() {
+      var wrap = $('cu-list'), term = $('cu-search').value.trim().toLowerCase();
+      if (!customersRows.length) {
+        wrap.innerHTML = '';
+        status('cu-list-status', customersLoaded ? 'No customers yet. Add one above, or bring one in from a quote.' : '');
+        return;
+      }
+      var rows = customersRows.filter(function (c) {
+        return !term || [fmtCust(c), c.name, c.phone, c.email, c.city, c.address].join(' ').toLowerCase().indexOf(term) > -1;
+      });
+      status('cu-list-status', customersRows.length + (customersRows.length === 1 ? ' customer' : ' customers') + (term ? ', ' + rows.length + ' matching.' : '.'));
+      var inp = function (c, f, label, type, cls) {
+        return '<div' + (cls ? ' class="' + cls + '"' : '') + '><label>' + label + '</label><input class="p-field" data-f="' + f + '" type="' + type + '" aria-label="' + label + '" value="' + esc(c[f]) + '" /></div>';
+      };
+      wrap.innerHTML = rows.map(function (c) {
+        return '<details class="qz" data-id="' + esc(c.id) + '">' +
+          '<summary><span class="qz-name">' + (esc(c.name) || 'No name') + '</span>' +
+          '<span class="qz-meta">' + esc(fmtCust(c)) + (c.city ? ' \u00b7 ' + esc(c.city) : '') + (c.phone ? ' \u00b7 ' + esc(c.phone) : '') + '</span></summary>' +
+          '<div class="qz-body"><div class="f-grid">' +
+            inp(c, 'name', 'Name', 'text', 'span2') + inp(c, 'phone', 'Phone', 'tel') + inp(c, 'email', 'Email', 'email') +
+            inp(c, 'address', 'Street address', 'text', 'span2') + inp(c, 'city', 'City', 'text', 'span2') +
+          '</div>' +
+          '<label>Notes</label><textarea class="p-field" data-f="notes" aria-label="Notes">' + esc(c.notes) + '</textarea>' +
+          (c.source_quote_ref ? '<p class="hint">Came from quote ' + esc(c.source_quote_ref) + '.</p>' : '') +
+          '<div class="qz-acts">' +
+            '<button class="btn" type="button" data-act="save">Save changes</button>' +
+            '<button class="btn btn-quiet" type="button" data-act="invoice">New invoice</button>' +
+            '<button class="qz-del" type="button" data-act="delete">Delete</button>' +
+          '</div></div></details>';
+      }).join('');
+    }
+
+    $('cu-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      var card = btn.closest('.qz'), c = customerById(card.getAttribute('data-id'));
+      if (!c) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'save') {
+        var upd = {};
+        Array.prototype.forEach.call(card.querySelectorAll('[data-f]'), function (el) { upd[el.getAttribute('data-f')] = el.value.trim(); });
+        if (!upd.name) { status('cu-list-status', 'A customer needs a name.', 'err'); return; }
+        btn.disabled = true;
+        client.from(HCC_SUPABASE.customersTable).update(upd).eq('id', c.id).select().single()
+          .then(function (res) {
+            btn.disabled = false;
+            if (res.error) { status('cu-list-status', 'Could not save that: ' + tablesMsg(res.error), 'err'); return; }
+            for (var k in res.data) c[k] = res.data[k];
+            card.querySelector('.qz-name').textContent = c.name || 'No name';
+            fillCustomerSelect();
+            status('cu-list-status', 'Saved ' + fmtCust(c) + '.', 'ok');
+          }, function () { btn.disabled = false; status('cu-list-status', 'Could not save that.', 'err'); });
+      } else if (act === 'invoice') {
+        showTab('invoices'); ivNew(); ivPickCustomer(c.id);
+        status('iv-status', 'New invoice for ' + fmtCust(c) + '.');
+      } else if (act === 'delete') {
+        if (!confirm('Delete ' + fmtCust(c) + ' ' + (c.name || '') + '? Invoices already written keep their own copy of the name and address. This cannot be undone.')) return;
+        client.from(HCC_SUPABASE.customersTable).delete().eq('id', c.id)
+          .then(function (res) {
+            if (res.error) { status('cu-list-status', 'Could not delete that: ' + tablesMsg(res.error), 'err'); return; }
+            customersRows = customersRows.filter(function (x) { return x.id !== c.id; });
+            renderCustomers(); fillCustomerSelect();
+          }, function () { status('cu-list-status', 'Could not delete that.', 'err'); });
+      }
+    });
+
+    // ---- invoices -----------------------------------------------------
+    function fillCustomerSelect() {
+      var sel = $('iv-customer'), keep = sel.value;
+      sel.innerHTML = '<option value="">Pick a customer…</option>' + customersRows.slice().sort(function (a, b) {
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      }).map(function (c) {
+        return '<option value="' + esc(c.id) + '">' + esc((c.name || 'No name') + ' \u00b7 ' + fmtCust(c)) + '</option>';
+      }).join('');
+      sel.value = keep;
+      if (sel.value !== keep) sel.value = '';
+    }
+    function ivPickCustomer(id) {
+      var c = customerById(id);
+      $('iv-customer').value = c ? c.id : '';
+      if (!c) return;
+      $('iv-custno').value = fmtCust(c);
+      $('iv-bname').value = c.name || '';
+      $('iv-bphone').value = c.phone || '';
+      $('iv-bemail').value = c.email || '';
+      $('iv-baddr').value = [c.address, c.city].filter(Boolean).join('\n');
+    }
+    $('iv-customer').addEventListener('change', function () { if (this.value) ivPickCustomer(this.value); });
+
+    function ivFillServices() {
+      var sel = $('iv-svc'), keep = sel.value, order = pricing.order || Object.keys(pricing.services || {});
+      sel.innerHTML = order.filter(function (k) { return pricing.services[k]; }).map(function (k) {
+        return '<option value="' + esc(k) + '">' + esc(pricing.services[k].name) + '</option>';
+      }).join('');
+      if (keep) sel.value = keep;
+      if (!sel.value && sel.options.length) sel.selectedIndex = 0;
+      ivFillItems();
+    }
+    function roomName(key) {
+      var rooms = pricing.rooms || HCC_PRICES.rooms;
+      for (var i = 0; i < rooms.length; i++) if (rooms[i][0] === key) return rooms[i][1];
+      return key;
+    }
+    /* Labels show today's saved prices; the rate is read again when Add line
+       is pressed, so a price saved a moment ago is the one used. */
+    function ivFillItems() {
+      var sv = pricing.services[$('iv-svc').value] || {}, sel = $('iv-item'), keep = sel.value, opts = [], m = window.HCCInvoice.money;
+      if (sv.rates) (pricing.rooms || HCC_PRICES.rooms).forEach(function (r) {
+        if (sv.rates[r[0]] != null) opts.push(['room:' + r[0], r[1] + ' \u2014 ' + m(sv.rates[r[0]])]);
+      });
+      if (sv.perSqFt != null) opts.push(['sqft', 'Square feet \u2014 ' + m(sv.perSqFt) + ' each']);
+      opts.push(['flat', 'Whole visit, price typed in']);
+      sel.innerHTML = opts.map(function (o) { return '<option value="' + esc(o[0]) + '">' + esc(o[1]) + '</option>'; }).join('');
+      if (keep) sel.value = keep;
+      if (!sel.value) sel.selectedIndex = 0;
+    }
+    $('iv-svc').addEventListener('change', ivFillItems);
+
+    function ivFocusLast(key) {
+      var rows = $('iv-lines').querySelectorAll('tr[data-i]');
+      if (!rows.length) return;
+      var el = rows[rows.length - 1].querySelector('[data-k="' + key + '"]');
+      if (el) el.focus();
+    }
+    $('iv-add').addEventListener('click', function () {
+      var sv = pricing.services[$('iv-svc').value];
+      if (!sv) return;
+      var item = $('iv-item').value, line, focus = 'qty';
+      if (item.indexOf('room:') === 0 && sv.rates) {
+        var rk = item.slice(5);
+        line = { label: sv.name + ' \u2014 ' + roomName(rk), qty: '1', rate: String(sv.rates[rk]) };
+      } else if (item === 'sqft') {
+        line = { label: sv.name + ' \u2014 square feet', qty: '', rate: String(sv.perSqFt) };
+      } else {
+        line = { label: sv.name, qty: '1', rate: '' }; focus = 'rate';
+      }
+      ivLines.push(line); ivRenderLines(); ivFocusLast(focus);
+    });
+    $('iv-blank').addEventListener('click', function () {
+      ivLines.push({ label: '', qty: '1', rate: '' }); ivRenderLines(); ivFocusLast('label');
+    });
+
+    function ivRenderLines() {
+      var tb = $('iv-lines');
+      if (!ivLines.length) {
+        tb.innerHTML = '<tr class="iv-empty"><td colspan="5">No lines yet. Pick a service above and press Add line, or add a blank line.</td></tr>';
+      } else {
+        tb.innerHTML = ivLines.map(function (l, i) {
+          return '<tr data-i="' + i + '">' +
+            '<td><input class="p-field" data-k="label" aria-label="Description" value="' + esc(l.label) + '" /></td>' +
+            '<td class="n"><input class="p-field" data-k="qty" inputmode="decimal" aria-label="Quantity" value="' + esc(l.qty) + '" /></td>' +
+            '<td class="r"><input class="p-field" data-k="rate" inputmode="decimal" aria-label="Rate" value="' + esc(l.rate) + '" /></td>' +
+            '<td class="amt"></td>' +
+            '<td><button type="button" class="iv-x" aria-label="Remove this line">&times;</button></td></tr>';
+        }).join('');
+      }
+      ivTotals();
+    }
+    $('iv-lines').addEventListener('input', function (e) {
+      var el = e.target.closest('[data-k]');
+      if (!el) return;
+      var i = +el.closest('tr').getAttribute('data-i');
+      if (ivLines[i]) { ivLines[i][el.getAttribute('data-k')] = el.value; ivTotals(); }
+    });
+    $('iv-lines').addEventListener('click', function (e) {
+      var b = e.target.closest('.iv-x');
+      if (!b) return;
+      ivLines.splice(+b.closest('tr').getAttribute('data-i'), 1);
+      ivRenderLines();
+    });
+
+    function ivCollect() {
+      var H = window.HCCInvoice;
+      return {
+        customer_id: $('iv-customer').value || null,
+        customer_no: $('iv-custno').value.trim(),
+        bill_name: $('iv-bname').value.trim(),
+        bill_phone: $('iv-bphone').value.trim(),
+        bill_email: $('iv-bemail').value.trim(),
+        bill_address: $('iv-baddr').value.trim(),
+        quote_ref: $('iv-quote').value.trim(),
+        wo_number: $('iv-wo').value.trim(),
+        service_date: $('iv-sdate').value || null,
+        due_date: $('iv-due').value || null,
+        line_items: ivLines.filter(function (l) {
+          return String(l.label).trim() || String(l.qty).trim() || String(l.rate).trim();
+        }).map(function (l) {
+          return { label: String(l.label).trim(), qty: H.num(l.qty), rate: H.num(l.rate) };
+        }),
+        discount_type: $('iv-dtype').value,
+        discount_value: H.num($('iv-dval').value),
+        discount_note: $('iv-dnote').value.trim(),
+        tax_rate: H.num($('iv-tax').value),
+        status: $('iv-state').value,
+        payment_method: $('iv-method').value,
+        payment_note: $('iv-pnote').value.trim(),
+        paid_on: $('iv-paidon').value || null,
+        notes: $('iv-notes').value.trim()
+      };
+    }
+    function ivTotals() {
+      var H = window.HCCInvoice, m = H.money, c = H.compute(ivCollect());
+      Array.prototype.forEach.call($('iv-lines').querySelectorAll('tr[data-i]'), function (tr) {
+        var l = ivLines[+tr.getAttribute('data-i')];
+        tr.querySelector('.amt').textContent = l ? m(H.compute({ line_items: [l] }).lines[0].amount) : '';
+      });
+      $('iv-sums').innerHTML =
+        '<tr><td>Subtotal</td><td>' + m(c.subtotal) + '</td></tr>' +
+        (c.discount > 0 ? '<tr class="disc"><td>Discount</td><td>\u2212' + m(c.discount) + '</td></tr>' : '') +
+        (c.taxRate > 0 ? '<tr><td>Tax (' + c.taxRate + '%)</td><td>' + m(c.tax) + '</td></tr>' : '') +
+        '<tr class="tot"><td>Total</td><td>' + m(c.total) + '</td></tr>';
+    }
+    ['iv-dval', 'iv-tax'].forEach(function (id) { $(id).addEventListener('input', ivTotals); });
+    $('iv-dtype').addEventListener('change', ivTotals);
+    $('iv-state').addEventListener('change', function () {
+      if (this.value === 'paid' && !$('iv-paidon').value) $('iv-paidon').value = todayISO();
+    });
+
+    function ivNew() {
+      ivEditing = null;
+      $('iv-form').reset();
+      $('iv-customer').value = '';
+      $('iv-no').textContent = 'New invoice';
+      $('iv-sdate').value = todayISO();
+      ivLines = [];
+      ivFillServices();
+      ivRenderLines();
+      status('iv-status', '');
+    }
+    $('iv-new').addEventListener('click', ivNew);
+
+    function ivLoad(r) {
+      ivNew();
+      ivEditing = r;
+      var set = function (id, v) { $(id).value = v == null ? '' : v; };
+      $('iv-no').textContent = window.HCCInvoice.invNo(r.inv_no);
+      $('iv-customer').value = (r.customer_id && customerById(r.customer_id)) ? r.customer_id : '';
+      set('iv-custno', r.customer_no); set('iv-bname', r.bill_name); set('iv-bphone', r.bill_phone);
+      set('iv-bemail', r.bill_email); set('iv-baddr', r.bill_address); set('iv-quote', r.quote_ref);
+      set('iv-wo', r.wo_number); set('iv-sdate', r.service_date); set('iv-due', r.due_date);
+      set('iv-dtype', r.discount_type || 'none'); set('iv-dval', Number(r.discount_value) || '');
+      set('iv-dnote', r.discount_note); set('iv-tax', Number(r.tax_rate) || '');
+      set('iv-state', r.status || 'unpaid'); set('iv-method', r.payment_method);
+      set('iv-pnote', r.payment_note); set('iv-paidon', r.paid_on); set('iv-notes', r.notes);
+      ivLines = (Array.isArray(r.line_items) ? r.line_items : []).map(function (l) {
+        return { label: l.label || '', qty: l.qty == null ? '' : String(l.qty), rate: l.rate == null ? '' : String(l.rate) };
+      });
+      ivRenderLines();
+      status('iv-status', 'Editing ' + window.HCCInvoice.invNo(r.inv_no) + '. Save to keep changes.');
+      $('iv-form').scrollIntoView({ block: 'start' });
+    }
+
+    /* Quote lines were saved as text, e.g. "3 × bedrooms @ $37" for $111, and a
+       discount as its own line, "−$113.75". Rooms come back as qty and rate so
+       they stay editable; anything else comes back as one line at its amount. */
+    function ivFromQuote(q) {
+      var H = window.HCCInvoice;
+      $('iv-quote').value = q.ref || '';
+      if (!$('iv-bname').value) {
+        $('iv-bname').value = q.customer_name || '';
+        $('iv-bphone').value = q.customer_phone || '';
+        $('iv-bemail').value = q.customer_email || '';
+        $('iv-baddr').value = q.customer_area || '';
+      }
+      var svc = q.service_name || '';
+      (Array.isArray(q.line_items) ? q.line_items : []).forEach(function (l) {
+        var label = String(l.label || '');
+        var mm = /^\s*([\d.,]+)\s*[\u00d7x]\s*(.+?)\s*@\s*\$?\s*([\d.,]+)\s*$/.exec(label);
+        if (mm) ivLines.push({ label: (svc ? svc + ' \u2014 ' : '') + mm[2], qty: mm[1].replace(/,/g, ''), rate: mm[3].replace(/,/g, '') });
+        else ivLines.push({ label: label, qty: '1', rate: String(H.num(l.amount)) });
+      });
+      ivRenderLines();
+    }
+    $('iv-fromquote').addEventListener('click', function () {
+      var ref = $('iv-quote').value.trim().toUpperCase();
+      if (!ref) { status('iv-status', 'Type or pick the quote number first.', 'err'); return; }
+      ensureQuotes(function () {
+        var q = null;
+        for (var i = 0; i < quotesRows.length; i++) if (String(quotesRows[i].ref).toUpperCase() === ref) q = quotesRows[i];
+        if (!q) { status('iv-status', 'No saved quote with the number ' + ref + '.', 'err'); return; }
+        ivFromQuote(q);
+        status('iv-status', 'Copied ' + (q.line_items || []).length + ' lines from ' + q.ref + '. Edit them as needed.');
+      });
+    });
+
+    function ivProblem(row) {
+      if (!row.bill_name && !row.customer_id) return 'Pick a customer, or type a name under Bill to.';
+      if (!row.line_items.length) return 'Add at least one line under Services received.';
+      return '';
+    }
+    function ivDoc(r) {
+      var d = {};
+      for (var k in r) d[k] = r[k];
+      d.issuedText = dayOf(r.created_at);
+      d.stampSrc = new URL('ml-stamp-emblem-150.png', location.href).href;
+      d.logoSrc = SHEET_LOGO;
+      return d;
+    }
+    function ivSave(after) {
+      var row = ivCollect(), bad = ivProblem(row);
+      if (bad) { status('iv-status', bad, 'err'); if (after) after(null); return; }
+      var c = window.HCCInvoice.compute(row);
+      row.subtotal = c.subtotal; row.total = c.total;
+      $('iv-save').disabled = $('iv-print').disabled = true;
+      status('iv-status', 'Saving\u2026');
+      var tbl = client.from(HCC_SUPABASE.invoicesTable);
+      var req = ivEditing ? tbl.update(row).eq('id', ivEditing.id) : tbl.insert(row);
+      req.select().single().then(function (res) {
+        $('iv-save').disabled = $('iv-print').disabled = false;
+        if (res.error) { status('iv-status', 'Could not save: ' + tablesMsg(res.error), 'err'); if (after) after(null); return; }
+        var saved = res.data, was = !!ivEditing;
+        ivEditing = saved;
+        invoicesRows = [saved].concat(invoicesRows.filter(function (x) { return x.id !== saved.id; }));
+        invoicesRows.sort(function (a, b) { return String(b.created_at).localeCompare(String(a.created_at)); });
+        renderInvoices();
+        $('iv-no').textContent = window.HCCInvoice.invNo(saved.inv_no);
+        status('iv-status', (was ? 'Saved changes to ' : 'Saved as ') + window.HCCInvoice.invNo(saved.inv_no) + '.', 'ok');
+        if (after) after(saved);
+      }, function () {
+        $('iv-save').disabled = $('iv-print').disabled = false;
+        status('iv-status', 'Could not save.', 'err');
+        if (after) after(null);
+      });
+    }
+    $('iv-form').addEventListener('submit', function (e) { e.preventDefault(); ivSave(); });
+    /* The tab is opened HERE, inside the click, because a tab opened after the
+       save comes back is outside the click and browsers block it. It is filled
+       once the save returns, or closed if the save failed. */
+    $('iv-print').addEventListener('click', function () {
+      var bad = ivProblem(ivCollect());
+      if (bad) { status('iv-status', bad, 'err'); return; }
+      var w = window.open('', '_blank');
+      if (!w) { status('iv-status', 'Your browser blocked the new tab. Allow pop-ups for this site, then try again.', 'err'); return; }
+      ivSave(function (saved) {
+        if (!saved) { try { w.close(); } catch (err) {} return; }
+        window.HCCQuoteDoc.openHtml(window.HCCInvoice.render(ivDoc(saved)), w);
+      });
+    });
+
+    function loadInvoices() {
+      if (!client) return;
+      status('iv-list-status', 'Loading\u2026');
+      client.from(HCC_SUPABASE.invoicesTable).select('*').order('created_at', { ascending: false }).limit(1000)
+        .then(function (res) {
+          if (res.error) { status('iv-list-status', 'Invoices could not load: ' + tablesMsg(res.error), 'err'); return; }
+          invoicesRows = res.data || []; invoicesLoaded = true;
+          renderInvoices();
+        }, function () { status('iv-list-status', 'Invoices could not load.', 'err'); });
+    }
+    function invoiceById(id) {
+      for (var i = 0; i < invoicesRows.length; i++) if (invoicesRows[i].id === id) return invoicesRows[i];
+      return null;
+    }
+    var IV_STATUS = [['unpaid', 'Unpaid'], ['paid', 'Paid'], ['void', 'Void']];
+    function renderInvoices() {
+      var H = window.HCCInvoice, m = H.money, wrap = $('iv-list'), f = $('iv-filter').value, today = todayISO();
+      if (!invoicesRows.length) {
+        wrap.innerHTML = '';
+        status('iv-list-status', invoicesLoaded ? 'No invoices yet. The first one saved becomes INV.HCC.0001.' : '');
+        return;
+      }
+      var unpaid = invoicesRows.filter(function (r) { return r.status === 'unpaid'; });
+      var owed = unpaid.reduce(function (a, r) { return a + (Number(r.total) || 0); }, 0);
+      var rows = f === 'all' ? invoicesRows : invoicesRows.filter(function (r) { return r.status === f; });
+      status('iv-list-status', invoicesRows.length + (invoicesRows.length === 1 ? ' invoice' : ' invoices') + ' \u00b7 ' +
+        unpaid.length + ' unpaid, ' + m(owed) + ' owed' + (f !== 'all' ? ' \u00b7 showing ' + rows.length : '') + '.');
+      var field = function (label, val) { return val ? '<div class="qz-field"><b>' + label + '</b>' + val + '</div>' : ''; };
+      wrap.innerHTML = rows.map(function (r) {
+        var c = H.compute(r);
+        var late = r.status === 'unpaid' && r.due_date && r.due_date < today;
+        var chip = '<span class="iv-chip ' + (late ? 'late' : esc(r.status)) + '">' + (late ? 'Overdue' : ({ unpaid: 'Unpaid', paid: 'Paid', void: 'Void' }[r.status] || '')) + '</span>';
+        var lines = c.lines.map(function (l) {
+          return '<tr><td>' + esc(l.label) + (l.qty !== 1 ? ' \u00d7 ' + esc(l.qty) : '') + '</td><td>' + m(l.amount) + '</td></tr>';
+        }).join('');
+        var opts = IV_STATUS.map(function (o) { return '<option value="' + o[0] + '"' + (r.status === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('');
+        var paid = r.status === 'paid' ? (esc([H.dateText(r.paid_on), r.payment_method, r.payment_note].filter(Boolean).join(' \u00b7 ')) || 'Yes') : '';
+        return '<details class="qz' + (r.status === 'void' ? ' is-done' : '') + '" data-id="' + esc(r.id) + '">' +
+          '<summary><span class="qz-name">' + (esc(r.bill_name) || 'No name') + '</span>' +
+            '<span class="qz-meta">' + esc(H.invNo(r.inv_no)) + ' \u00b7 ' + esc(dayOf(r.created_at)) + (r.customer_no ? ' \u00b7 ' + esc(r.customer_no) : '') + '</span>' +
+            '<span class="qz-total">' + m(r.total) + '</span>' + chip + '</summary>' +
+          '<div class="qz-body"><div class="qz-cols"><div><table class="qz-table">' + lines +
+            '<tr><td>Subtotal</td><td>' + m(c.subtotal) + '</td></tr>' +
+            (c.discount > 0 ? '<tr class="disc"><td>Discount' + (r.discount_note ? ' \u00b7 ' + esc(r.discount_note) : '') + '</td><td>\u2212' + m(c.discount) + '</td></tr>' : '') +
+            (c.taxRate > 0 ? '<tr><td>Tax (' + c.taxRate + '%)</td><td>' + m(c.tax) + '</td></tr>' : '') +
+            '<tr class="tot"><td>Total</td><td>' + m(c.total) + '</td></tr></table></div><div>' +
+            field('Quote #', esc(r.quote_ref)) + field('WO #', esc(r.wo_number)) +
+            field('Service date', esc(H.dateText(r.service_date))) + field('Due', esc(H.dateText(r.due_date))) +
+            field('Paid', paid) + field('Notes', r.notes ? '<span class="qz-notes">' + esc(r.notes) + '</span>' : '') +
+          '</div></div>' +
+          '<div class="qz-acts">' +
+            '<button class="btn" type="button" data-act="edit">Edit</button>' +
+            '<button class="btn btn-quiet" type="button" data-act="print">Print</button>' +
+            '<select data-act="status" aria-label="Status">' + opts + '</select>' +
+            '<button class="qz-del" type="button" data-act="delete">Delete</button>' +
+          '</div></div></details>';
+      }).join('');
+    }
+    $('iv-filter').addEventListener('change', renderInvoices);
+
+    $('iv-list').addEventListener('change', function (e) {
+      var sel = e.target.closest('select[data-act="status"]');
+      if (!sel) return;
+      var r = invoiceById(sel.closest('.qz').getAttribute('data-id'));
+      if (!r) return;
+      var upd = { status: sel.value };
+      if (sel.value === 'paid' && !r.paid_on) upd.paid_on = todayISO();
+      client.from(HCC_SUPABASE.invoicesTable).update(upd).eq('id', r.id).select().single()
+        .then(function (res) {
+          if (res.error) { sel.value = r.status; status('iv-list-status', 'Could not save that: ' + tablesMsg(res.error), 'err'); return; }
+          for (var k in res.data) r[k] = res.data[k];
+          if (ivEditing && ivEditing.id === r.id) { ivSetStatus(r); }
+          renderInvoices();
+        }, function () { sel.value = r.status; status('iv-list-status', 'Could not save that.', 'err'); });
+    });
+    function ivSetStatus(r) {
+      $('iv-state').value = r.status;
+      $('iv-paidon').value = r.paid_on || '';
+      ivEditing = r;
+    }
+
+    $('iv-list').addEventListener('click', function (e) {
+      var btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      var r = invoiceById(btn.closest('.qz').getAttribute('data-id'));
+      if (!r) return;
+      var act = btn.getAttribute('data-act');
+      if (act === 'edit') { ivLoad(r); return; }
+      if (act === 'print') {
+        if (!window.HCCInvoice.open(ivDoc(r))) status('iv-list-status', 'Your browser blocked the new tab. Allow pop-ups for this site, then press Print again.', 'err');
+        return;
+      }
+      if (act === 'delete') {
+        if (!confirm('Delete ' + window.HCCInvoice.invNo(r.inv_no) + ' for ' + (r.bill_name || 'this customer') + '? Its number is not reused. This cannot be undone.')) return;
+        client.from(HCC_SUPABASE.invoicesTable).delete().eq('id', r.id)
+          .then(function (res) {
+            if (res.error) { status('iv-list-status', 'Could not delete that: ' + tablesMsg(res.error), 'err'); return; }
+            invoicesRows = invoicesRows.filter(function (x) { return x.id !== r.id; });
+            if (ivEditing && ivEditing.id === r.id) ivNew();
+            renderInvoices();
+          }, function () { status('iv-list-status', 'Could not delete that.', 'err'); });
+      }
+    });
+
     /* A class rather than a media query alone, so the wide layout applies to
        the admin panels and never to the print stylesheet. */
     function syncWide() { document.body.classList.toggle('is-wide', window.innerWidth >= 900); }
@@ -871,7 +1595,7 @@
     window.addEventListener('resize', syncWide);
 
     function showTab(which) {
-      ['gallery', 'pricing', 'sheet', 'reviews', 'quotes'].forEach(function (k) {
+      ['gallery', 'pricing', 'sheet', 'reviews', 'quotes', 'customers', 'invoices'].forEach(function (k) {
         $('view-' + k).hidden = (which !== k);
         $('tab-' + k).classList.toggle('on', which === k);
         $('tab-' + k).setAttribute('aria-selected', which === k);
@@ -880,12 +1604,22 @@
       if (which === 'sheet') { if (!pricingSaved && client) { loadPricing(); } renderSheet(); }
       if (which === 'reviews') loadReviewList();
       if (which === 'quotes') loadQuotes();
+      if (which === 'customers') { loadCustomers(); ensureQuotes(fillQuotePickers); }
+      if (which === 'invoices') {
+        if (!pricingSaved && client) loadPricing();
+        ivFillServices();
+        if (!ivEditing && !ivLines.length) ivRenderLines();
+        if (!$('iv-sdate').value && !ivEditing) $('iv-sdate').value = todayISO();
+        loadCustomers(); loadInvoices(); ensureQuotes(fillQuotePickers);
+      }
     }
     $('tab-reviews').addEventListener('click', function () { showTab('reviews'); });
     $('tab-gallery').addEventListener('click', function () { showTab('gallery'); });
     $('tab-pricing').addEventListener('click', function () { showTab('pricing'); });
     $('tab-sheet').addEventListener('click', function () { showTab('sheet'); });
     $('tab-quotes').addEventListener('click', function () { showTab('quotes'); });
+    $('tab-customers').addEventListener('click', function () { showTab('customers'); });
+    $('tab-invoices').addEventListener('click', function () { showTab('invoices'); });
 
     // ---- printable blank quote --------------------------------------
     var SHEET_LOGO = "data:image/webp;base64,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";
@@ -1165,6 +1899,7 @@
           else { pricingSaved = null; status('p-status', 'Nothing saved yet \u2014 these are the starting prices. Save once to make them yours.'); }
           pricingRender();
           sheetRefresh();
+          ivFillServices();
         });
     }
     /* v29: the Quote sheet tab used to draw straight away with the BUILT-IN
@@ -1313,7 +2048,10 @@
     function enter(session) {
       $('who').textContent = 'Signed in as ' + (session.user.email || '');
       show('panel-upload');
-      if ((location.hash || '').toLowerCase().indexOf('quotes') > -1) { showTab('quotes'); }
+      var h = (location.hash || '').toLowerCase();
+      if (h.indexOf('invoices') > -1) { showTab('invoices'); }
+      else if (h.indexOf('customers') > -1) { showTab('customers'); }
+      else if (h.indexOf('quotes') > -1) { showTab('quotes'); }
       else { loadList(); }
     }
 

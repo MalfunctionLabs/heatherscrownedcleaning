@@ -1,4 +1,8 @@
-<!-- HCC site — v60 (admin v31) — the shared scripts are now loaded as
+<!-- HCC site — v60 (admin v32) — site content unchanged. Footer tag to
+     rev60.32 for admin v32 (Customers and Invoices tabs), and quote-doc.js
+     loads as ?v=60.32 because that file changed (v5: its tab opener is shared
+     with the new printable invoice; what the customer's Print does is the same).
+     Previously, v60 (admin v31) — the shared scripts are now loaded as
      pricing-core.js?v=60 and quote-doc.js?v=60. Checking v59 live, the test
      browser ran the new page with the OLD quote-doc.js from its cache
      (GitHub Pages lets browsers keep files for 10 minutes), so Print this
@@ -137,7 +141,7 @@
      HCC_SUPABASE block in BOTH index.html and admin.html, which must stay
      identical. Row-level security verified live before shipping: the three
      tables read with the anon key, an anonymous write is refused 401.
-     Footer tag now ML.WD.WEBHCC-v1,rev60.31 — UserSubmit's scheme:
+     Footer tag now ML.WD.WEBHCC-v1,rev60.32 — UserSubmit's scheme:
      ML=Malfunction Labs, WD=WEB DESIGN LAB, WEBHCC=owning chair,
      v1=first live deployment, rev56.29=site build plus admin build.
      Further versioned components extend it rightward as 41.9.#.#.#
@@ -1333,13 +1337,13 @@
       <a class="credit" href="https://malfunctionlabs.com" target="_blank" rel="noopener noreferrer">Site by Malfunction Labs&trade; &middot; TRUST THE MALFUNCTION</a>
     </div>
     <p class="foot-legal">Heather's Crowned Cleaning, LLC. <span class="nowrap">Licensed &amp; Insured since 2026</span></p>
-    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev60.31</span>
+    <span class="ver" aria-hidden="true">ML.WD.WEBHCC-v1,rev60.32</span>
   </div>
 
   <!-- ?v= changes on every deploy that changes these files, so a browser never
        runs a cached older copy against a newer page (v60). -->
   <script src="pricing-core.js?v=60"></script>
-  <script src="quote-doc.js?v=60"></script>
+  <script src="quote-doc.js?v=60.32"></script>
   <script>
     // Rotating owner phrases: one is picked at random on every view.
     // Drafted from Heather's originals with the website lines removed;

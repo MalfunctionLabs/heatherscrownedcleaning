@@ -1,4 +1,9 @@
-/* HCC quote document — v4, 2026-09-12, WEBHCC.0
+/* HCC quote document — v5, 2026-09-13, WEBHCC.0
+   v5: the tab opener is exposed as openHtml(html, win), so invoice-doc.js
+   opens its invoice the same way instead of carrying a second copy. A tab
+   opened beforehand can be passed as win: Save and print in admin opens the
+   tab inside the click, where browsers allow it, and fills it after saving.
+
    v4: openQuote() loads the sheet as a real document instead of writing it
    into a blank tab, which showed and printed tiny on Android. See openQuote().
 
@@ -104,19 +109,25 @@
      The URL is deliberately not revoked: that would break Reload in that tab,
      and one quote is a few kilobytes. Browsers without Blob URLs keep the old
      way. Both callers (index.html, admin.html) come through here. */
-  function openQuote(data) {
-    var html = renderQuote(data);
+  function openQuote(data) { return openHtml(renderQuote(data)); }
+
+  /* v5: the opener on its own, so invoice-doc.js opens its invoice the same
+     full-size-on-phones way instead of carrying a second copy of this. */
+  function openHtml(html, win) {
     if (root.Blob && root.URL && root.URL.createObjectURL) {
       var base = '<base href="' + esc(root.location.href.split('#')[0]) + '" />';
       var blob = new root.Blob([html.replace('<head>', '<head>\n' + base)], { type: 'text/html;charset=utf-8' });
-      return !!root.open(root.URL.createObjectURL(blob), '_blank');
+      var url = root.URL.createObjectURL(blob);
+      if (win) { win.location.href = url; return true; }   // a real load, so the viewport still applies
+      return !!root.open(url, '_blank');
     }
-    var w = root.open('', '_blank');
+    var w = win || root.open('', '_blank');
     if (!w) return false;
+    w.document.open();
     w.document.write(html);
     w.document.close();
     return true;
   }
 
-  root.HCCQuoteDoc = { TPL: TPL, render: renderQuote, open: openQuote, esc: esc, money: formatMoney };
+  root.HCCQuoteDoc = { TPL: TPL, render: renderQuote, open: openQuote, openHtml: openHtml, esc: esc, money: formatMoney };
 })(window);
